@@ -3,19 +3,19 @@
 import MetricCards from './MetricCards'
 
 interface HeroProps {
-  user: any
-  metrics: {
+  user?: any
+  metrics?: {
     emAndamento: number
     relatoriosGerados: number
     imvMedio: number
   }
 }
 
-export function Hero({ user, metrics }: HeroProps) {
+export function Hero({ user, metrics = { emAndamento: 0, relatoriosGerados: 0, imvMedio: 0 } }: HeroProps) {
   const nome = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Consultor'
 
   return (
-    <section className="bg-[#EAF3FC] rounded-2xl p-6 md:p-8">
+    <section className="bg-[#EAF3FC] rounded-2xl p-6 md:p-8 mb-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#0A3D78]">
