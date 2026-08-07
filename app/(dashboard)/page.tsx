@@ -25,42 +25,47 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setLoading(true)
       
-      // Buscar diagnósticos
-      const { data: diagnosticos } = await supabase
-        .from('projetos_diagnostico')
-        .select('*')
-        .order('created_at', { ascending: false })
+      try {
+        // Buscar diagnósticos
+        const { data: diagnosticos } = await supabase
+          .from('projetos_diagnostico')
+          .select('*')
+          .order('created_at', { ascending: false })
 
-      // Buscar clientes
-      const { data: clientes } = await supabase
-        .from('empresas')
-        .select('id')
+        // Buscar clientes
+        const { data: clientes } = await supabase
+          .from('empresas')
+          .select('id')
 
-      // Calcular estatísticas
-      const emAndamento = diagnosticos?.filter(d => 
-        d.status !== 'ENTREGA' && d.status !== 'MONITORAMENTO'
-      ).length || 0
+        // Calcular estatísticas
+        const emAndamento = diagnosticos?.filter(d => 
+          d.status !== 'ENTREGA' && d.status !== 'MONITORAMENTO'
+        ).length || 0
 
-      const concluidos = diagnosticos?.filter(d => 
-        d.status === 'ENTREGA' || d.status === 'MONITORAMENTO'
-      ).length || 0
+        const concluidos = diagnosticos?.filter(d => 
+          d.status === 'ENTREGA' || d.status === 'MONITORAMENTO'
+        ).length || 0
 
-      setStats({
-        totalDiagnosticos: diagnosticos?.length || 0,
-        emAndamento,
-        concluidos,
-        totalClientes: clientes?.length || 0,
-      })
+        setStats({
+          totalDiagnosticos: diagnosticos?.length || 0,
+          emAndamento,
+          concluidos,
+          totalClientes: clientes?.length || 0,
+        })
 
-      setDiagnosticosRecentes(diagnosticos?.slice(0, 5) || [])
-      setLoading(false)
+        setDiagnosticosRecentes(diagnosticos?.slice(0, 5) || [])
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchData()
   }, [supabase])
 
   const getStatusColor = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       'CADASTRO': 'bg-gray-400',
       'PLANEJAMENTO': 'bg-blue-400',
       'COLETA': 'bg-yellow-400',
@@ -70,11 +75,11 @@ export default function DashboardPage() {
       'ENTREGA': 'bg-green-400',
       'MONITORAMENTO': 'bg-teal-400',
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-400'
+    return colors[status] || 'bg-gray-400'
   }
 
   const getStatusLabel = (status: string) => {
-    const labels = {
+    const labels: Record<string, string> = {
       'CADASTRO': 'Cadastro',
       'PLANEJAMENTO': 'Planejamento',
       'COLETA': 'Coleta de dados',
@@ -84,13 +89,13 @@ export default function DashboardPage() {
       'ENTREGA': 'Entrega',
       'MONITORAMENTO': 'Monitoramento',
     }
-    return labels[status as keyof typeof labels] || status
+    return labels[status] || status
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vigorre-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0F5FA8]"></div>
       </div>
     )
   }
@@ -100,8 +105,8 @@ export default function DashboardPage() {
       title: 'Total de Diagnósticos',
       value: stats.totalDiagnosticos,
       icon: ClipboardList,
-      color: 'text-vigorre-primary',
-      bg: 'bg-vigorre-very-light'
+      color: 'text-[#0F5FA8]',
+      bg: 'bg-[#EAF3FC]'
     },
     {
       title: 'Em Andamento',
@@ -121,7 +126,7 @@ export default function DashboardPage() {
       title: 'Clientes Atendidos',
       value: stats.totalClientes,
       icon: Building2,
-      color: 'text-vigorre-light',
+      color: 'text-[#4D90D9]',
       bg: 'bg-blue-50'
     }
   ]
@@ -129,10 +134,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-vigorre-secondary">
+        <h1 className="text-2xl font-bold text-[#0A3D78]">
           Dashboard
         </h1>
-        <p className="text-vigorre-gray-dark">
+        <p className="text-[#5E6C84]">
           Bem-vindo(a) ao Vigorre Diagnostics™ 3.0 "QUANTUM"
         </p>
       </div>
@@ -141,7 +146,7 @@ export default function DashboardPage() {
         {cards.map((card) => (
           <Card key={card.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-vigorre-gray-dark">
+              <CardTitle className="text-sm font-medium text-[#5E6C84]">
                 {card.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${card.bg}`}>
@@ -149,7 +154,7 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-vigorre-dark">
+              <p className="text-3xl font-bold text-[#1C1F26]">
                 {card.value}
               </p>
             </CardContent>
@@ -159,16 +164,16 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-vigorre-secondary">
+          <CardTitle className="text-[#0A3D78]">
             Diagnósticos Recentes
           </CardTitle>
         </CardHeader>
         <CardContent>
           {diagnosticosRecentes.length === 0 ? (
-            <p className="text-vigorre-gray-dark text-center py-8">
+            <p className="text-[#5E6C84] text-center py-8">
               Nenhum diagnóstico iniciado ainda.
               <br />
-              <button className="text-vigorre-primary font-medium hover:underline mt-2">
+              <button className="text-[#0F5FA8] font-medium hover:underline mt-2">
                 + Criar primeiro diagnóstico
               </button>
             </p>
@@ -177,13 +182,13 @@ export default function DashboardPage() {
               {diagnosticosRecentes.map((diag) => (
                 <div
                   key={diag.id}
-                  className="flex items-center justify-between p-4 border border-vigorre-gray-medium rounded-lg hover:border-vigorre-primary transition-colors"
+                  className="flex items-center justify-between p-4 border border-[#D7DEE8] rounded-lg hover:border-[#0F5FA8] transition-colors"
                 >
                   <div>
-                    <h4 className="font-medium text-vigorre-dark">
+                    <h4 className="font-medium text-[#1C1F26]">
                       {diag.titulo || 'Diagnóstico sem título'}
                     </h4>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-vigorre-gray-dark">
+                    <div className="flex items-center gap-4 mt-1 text-sm text-[#5E6C84]">
                       <span>ID: {diag.id.slice(0, 8)}</span>
                       <span>
                         {new Date(diag.created_at).toLocaleDateString('pt-BR')}
@@ -194,7 +199,7 @@ export default function DashboardPage() {
                     <span className={`px-3 py-1 rounded-full text-xs text-white ${getStatusColor(diag.status)}`}>
                       {getStatusLabel(diag.status)}
                     </span>
-                    <button className="text-vigorre-primary hover:underline text-sm font-medium">
+                    <button className="text-[#0F5FA8] hover:underline text-sm font-medium">
                       Ver detalhes
                     </button>
                   </div>
