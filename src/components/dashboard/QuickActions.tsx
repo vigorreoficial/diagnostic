@@ -32,7 +32,7 @@ export function QuickActions() {
   ]
 
   return (
-    <section>
+    <section className="mb-6">
       <h2 className="text-lg font-semibold text-[#0A3D78] mb-4">
         Ações rápidas
       </h2>
