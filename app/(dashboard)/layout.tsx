@@ -1,3 +1,7 @@
+'use client'
+
+import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 
@@ -6,18 +10,25 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed)
+  }
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar fixa */}
-      <Sidebar />
+    <div className="flex h-screen overflow-hidden bg-vigorre-gray-light">
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggle={toggleSidebar}
+      />
       
-      {/* Conteúdo principal com scroll */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header fixo */}
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
+        isSidebarCollapsed ? "ml-[72px]" : "ml-[280px]"
+      )}>
         <Header />
-        
-        {/* Conteúdo com scroll */}
-        <main className="flex-1 overflow-y-auto bg-vigorre-gray-light p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>
