@@ -1,3 +1,5 @@
+'use client'
+
 import { FileText, BarChart3, BookOpen, Plus } from 'lucide-react'
 import Link from 'next/link'
 
@@ -7,31 +9,31 @@ export function QuickActions() {
       label: 'Novo Diagnóstico', 
       icon: Plus, 
       href: '/diagnosticos/novo',
-      color: 'bg-vigorre-primary text-white'
+      color: 'bg-[#0F5FA8] text-white border-[#0F5FA8]'
     },
     { 
       label: 'Relatórios', 
       icon: FileText, 
       href: '/relatorios',
-      color: 'bg-white text-vigorre-dark border-vigorre-gray-medium'
+      color: 'bg-white text-[#1C1F26] border-[#D7DEE8]'
     },
     { 
       label: 'Dashboard', 
       icon: BarChart3, 
       href: '/dashboard',
-      color: 'bg-white text-vigorre-dark border-vigorre-gray-medium'
+      color: 'bg-white text-[#1C1F26] border-[#D7DEE8]'
     },
     { 
       label: 'Knowledge Hub™', 
       icon: BookOpen, 
       href: '/knowledge-hub',
-      color: 'bg-white text-vigorre-dark border-vigorre-gray-medium'
+      color: 'bg-white text-[#1C1F26] border-[#D7DEE8]'
     },
   ]
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-vigorre-secondary mb-4">
+      <h2 className="text-lg font-semibold text-[#0A3D78] mb-4">
         Ações rápidas
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
