@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,10 +42,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-vigorre-very-light p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#EAF3FC] p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-vigorre-secondary">
+          <CardTitle className="text-2xl font-bold text-[#0A3D78]">
             Vigorre Diagnostics™
           </CardTitle>
           <CardDescription>
@@ -83,12 +82,12 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-vigorre-primary hover:bg-vigorre-secondary"
+              className="w-full bg-[#0F5FA8] hover:bg-[#0A3D78]"
               disabled={isLoading}
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
-            <p className="text-sm text-vigorre-gray-dark">
+            <p className="text-sm text-[#5E6C84]">
               Acesso exclusivo para colaboradores Vigorre.
             </p>
           </CardFooter>
