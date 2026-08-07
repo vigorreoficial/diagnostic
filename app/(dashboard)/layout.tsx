@@ -17,7 +17,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-vigorre-gray-light">
+    <div className="flex h-screen overflow-hidden bg-[#F7F8FA]">
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={toggleSidebar}
