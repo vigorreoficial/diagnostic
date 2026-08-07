@@ -20,11 +20,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  X
+  X,
+  Home,
+  Briefcase,
+  TrendingUp,
+  Award
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
+// ============================================
+// MENU ITEMS
+// ============================================
 
 const menuItems = [
   { 
@@ -80,6 +88,10 @@ const adminItems = [
   },
 ]
 
+// ============================================
+// SIDEBAR COMPONENT
+// ============================================
+
 interface SidebarProps {
   isCollapsed?: boolean
   onToggle?: () => void
@@ -121,7 +133,12 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       .slice(0, 2)
   }
 
-  // Menu mobile (overlay)
+  const isAdmin = userData?.perfil === 'ADMIN'
+
+  // ============================================
+  // MOBILE MENU
+  // ============================================
+
   const MobileMenu = () => (
     <>
       {/* Overlay */}
@@ -134,11 +151,12 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       
       {/* Menu mobile */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 md:hidden",
+        "fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out md:hidden",
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
+          {/* Header do menu mobile */}
+          <div className="flex items-center justify-between p-4 border-b border-vigorre-gray-medium">
             <div>
               <span className="text-lg font-bold text-vigorre-secondary">
                 Vigorre Diagnostics™
@@ -151,46 +169,65 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
               <X className="w-5 h-5" />
             </Button>
           </div>
+          
+          {/* Conteúdo do menu mobile */}
           <div className="flex-1 overflow-y-auto p-4">
-            <NavContent userData={userData} pathname={pathname} onNavigate={() => setIsMobileOpen(false)} />
+            <NavContent 
+              userData={userData} 
+              pathname={pathname} 
+              isAdmin={isAdmin}
+              onNavigate={() => setIsMobileOpen(false)} 
+            />
           </div>
-          <div className="p-4 border-t">
-            <FooterContent userData={userData} onLogout={handleLogout} />
+          
+          {/* Footer do menu mobile */}
+          <div className="p-4 border-t border-vigorre-gray-medium">
+            <FooterContent 
+              userData={userData} 
+              onLogout={handleLogout} 
+              isCollapsed={false}
+            />
           </div>
         </div>
       </div>
     </>
   )
 
-  // Desktop sidebar
+  // ============================================
+  // DESKTOP SIDEBAR
+  // ============================================
+
   const DesktopSidebar = () => (
     <aside className={cn(
-      "hidden md:flex md:flex-col bg-white border-r border-vigorre-gray-medium h-screen sticky top-0 flex-shrink-0 transition-all duration-300",
-      isCollapsed ? "w-20" : "w-64"
+      "hidden md:flex md:flex-col bg-white border-r border-vigorre-gray-medium h-screen fixed left-0 top-0 bottom-0 z-30 transition-all duration-300 ease-in-out",
+      isCollapsed ? "w-[72px]" : "w-[280px]"
     )}>
       {/* Logo */}
       <div className={cn(
-        "p-4 border-b border-vigorre-gray-medium flex items-center",
-        isCollapsed ? "justify-center" : "justify-between"
+        "h-16 flex items-center border-b border-vigorre-gray-medium flex-shrink-0",
+        isCollapsed ? "px-3 justify-center" : "px-4 justify-between"
       )}>
         {!isCollapsed ? (
-          <div>
+          <Link href="/" className="flex flex-col">
             <span className="text-lg font-bold text-vigorre-secondary">
               Vigorre Diagnostics™
             </span>
-            <span className="block text-xs text-vigorre-gray-dark">
+            <span className="text-[10px] text-vigorre-gray-dark leading-tight">
               Dados que transformam decisões.
             </span>
-          </div>
+          </Link>
         ) : (
-          <span className="text-xl font-bold text-vigorre-secondary">VD</span>
+          <Link href="/" className="flex flex-col items-center">
+            <span className="text-lg font-bold text-vigorre-secondary">VD</span>
+            <span className="text-[8px] text-vigorre-gray-dark leading-tight text-center">v3.0</span>
+          </Link>
         )}
         {onToggle && (
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onToggle}
-            className="hidden lg:flex"
+            className="hidden lg:flex flex-shrink-0 h-8 w-8"
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -201,23 +238,36 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
         )}
       </div>
 
-      {/* Navegação */}
-      <div className="flex-1 overflow-y-auto p-3">
-        <NavContent userData={userData} pathname={pathname} isCollapsed={isCollapsed} />
-      </div>
+      {/* Navegação com Scroll */}
+      <ScrollArea className="flex-1 px-3 py-4">
+        <NavContent 
+          userData={userData} 
+          pathname={pathname} 
+          isAdmin={isAdmin}
+          isCollapsed={isCollapsed}
+        />
+      </ScrollArea>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-vigorre-gray-medium">
-        <FooterContent userData={userData} onLogout={handleLogout} isCollapsed={isCollapsed} />
+      {/* Footer com Perfil */}
+      <div className="flex-shrink-0 p-3 border-t border-vigorre-gray-medium">
+        <FooterContent 
+          userData={userData} 
+          onLogout={handleLogout} 
+          isCollapsed={isCollapsed}
+        />
       </div>
     </aside>
   )
 
+  // ============================================
+  // RENDER
+  // ============================================
+
   return (
     <>
-      {/* Botão para abrir menu mobile */}
+      {/* Botão flutuante para abrir menu mobile */}
       <button
-        className="fixed bottom-4 right-4 z-30 md:hidden bg-vigorre-primary text-white p-3 rounded-full shadow-lg"
+        className="fixed bottom-6 right-6 z-40 md:hidden bg-vigorre-primary text-white p-3 rounded-full shadow-lg hover:bg-vigorre-secondary transition-colors"
         onClick={() => setIsMobileOpen(true)}
       >
         <Menu className="w-6 h-6" />
@@ -230,23 +280,38 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
 }
 
 // ============================================
-// COMPONENTES INTERNOS
+// NAV CONTENT - MENU PRINCIPAL
 // ============================================
 
 interface NavContentProps {
   userData: any
   pathname: string
+  isAdmin: boolean
   isCollapsed?: boolean
   onNavigate?: () => void
 }
 
-function NavContent({ userData, pathname, isCollapsed = false, onNavigate }: NavContentProps) {
-  const isAdmin = userData?.perfil === 'ADMIN'
+function NavContent({ 
+  userData, 
+  pathname, 
+  isAdmin, 
+  isCollapsed = false, 
+  onNavigate 
+}: NavContentProps) {
+  
+  // Função para verificar se o link está ativo
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/'
+    }
+    return pathname.startsWith(href)
+  }
 
   return (
     <nav className="space-y-1">
+      {/* Itens principais do menu */}
       {menuItems.map((item) => {
-        const isActive = pathname === item.href
+        const active = isActive(item.href)
         return (
           <Link
             key={item.href}
@@ -254,36 +319,50 @@ function NavContent({ userData, pathname, isCollapsed = false, onNavigate }: Nav
             onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
-              isActive
+              active
                 ? "bg-vigorre-very-light text-vigorre-primary"
                 : "text-vigorre-gray-dark hover:bg-vigorre-very-light hover:text-vigorre-primary"
             )}
           >
             <item.icon className={cn(
               "w-5 h-5 flex-shrink-0",
-              isActive && "text-vigorre-primary"
+              active && "text-vigorre-primary"
             )} />
             
             {!isCollapsed ? (
               <span className="truncate">{item.label}</span>
             ) : (
-              // Tooltip para sidebar colapsada
-              <span className="absolute left-full ml-2 px-2 py-1 bg-vigorre-dark text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+              /* Tooltip para sidebar colapsada */
+              <span className="absolute left-full ml-2 px-2.5 py-1.5 bg-vigorre-dark text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
                 {item.label}
                 <span className="block text-[10px] font-normal text-gray-300">
                   {item.description}
                 </span>
               </span>
             )}
+            
+            {/* Indicador de página ativa */}
+            {active && !isCollapsed && (
+              <span className="ml-auto w-1.5 h-6 bg-vigorre-primary rounded-full" />
+            )}
+            {active && isCollapsed && (
+              <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-vigorre-primary rounded-full" />
+            )}
           </Link>
         )
       })}
 
-      {/* Admin items */}
+      {/* Itens administrativos */}
       {isAdmin && (
         <div className="pt-2 mt-2 border-t border-vigorre-gray-medium">
+          <p className={cn(
+            "text-[10px] font-semibold text-vigorre-gray-dark uppercase tracking-wider px-3 py-1",
+            isCollapsed && "text-center"
+          )}>
+            {!isCollapsed ? 'Administração' : '⚙️'}
+          </p>
           {adminItems.map((item) => {
-            const isActive = pathname === item.href
+            const active = isActive(item.href)
             return (
               <Link
                 key={item.href}
@@ -291,7 +370,7 @@ function NavContent({ userData, pathname, isCollapsed = false, onNavigate }: Nav
                 onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
-                  isActive
+                  active
                     ? "bg-vigorre-very-light text-vigorre-primary"
                     : "text-vigorre-gray-dark hover:bg-vigorre-very-light hover:text-vigorre-primary"
                 )}
@@ -300,9 +379,12 @@ function NavContent({ userData, pathname, isCollapsed = false, onNavigate }: Nav
                 {!isCollapsed ? (
                   <span className="truncate">{item.label}</span>
                 ) : (
-                  <span className="absolute left-full ml-2 px-2 py-1 bg-vigorre-dark text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                  <span className="absolute left-full ml-2 px-2.5 py-1.5 bg-vigorre-dark text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
                     {item.label}
                   </span>
+                )}
+                {active && !isCollapsed && (
+                  <span className="ml-auto w-1.5 h-6 bg-vigorre-primary rounded-full" />
                 )}
               </Link>
             )
@@ -313,15 +395,28 @@ function NavContent({ userData, pathname, isCollapsed = false, onNavigate }: Nav
   )
 }
 
+// ============================================
+// FOOTER CONTENT - PERFIL E SAIR
+// ============================================
+
 interface FooterContentProps {
   userData: any
   onLogout: () => void
-  isCollapsed?: boolean
+  isCollapsed: boolean
 }
 
-function FooterContent({ userData, onLogout, isCollapsed = false }: FooterContentProps) {
+function FooterContent({ userData, onLogout, isCollapsed }: FooterContentProps) {
+  const getInitials = (nome: string) => {
+    return nome
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {/* Perfil */}
       <Link
         href="/perfil"
@@ -331,7 +426,7 @@ function FooterContent({ userData, onLogout, isCollapsed = false }: FooterConten
         )}
       >
         <Avatar className="w-8 h-8 bg-vigorre-primary text-white flex-shrink-0">
-          <AvatarFallback>
+          <AvatarFallback className="text-xs font-medium">
             {userData?.nome ? getInitials(userData.nome) : 'V'}
           </AvatarFallback>
         </Avatar>
@@ -341,12 +436,12 @@ function FooterContent({ userData, onLogout, isCollapsed = false }: FooterConten
             <p className="text-sm font-medium text-vigorre-dark truncate">
               {userData?.nome || 'Usuário'}
             </p>
-            <p className="text-xs text-vigorre-gray-dark truncate">
+            <p className="text-[11px] text-vigorre-gray-dark truncate">
               {userData?.perfil || '—'}
             </p>
           </div>
         ) : (
-          <span className="absolute left-full ml-2 px-2 py-1 bg-vigorre-dark text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+          <span className="absolute left-full ml-2 px-2.5 py-1.5 bg-vigorre-dark text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
             Meu Perfil
           </span>
         )}
@@ -364,7 +459,7 @@ function FooterContent({ userData, onLogout, isCollapsed = false }: FooterConten
         {!isCollapsed ? (
           <span>Sair</span>
         ) : (
-          <span className="absolute left-full ml-2 px-2 py-1 bg-vigorre-dark text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+          <span className="absolute left-full ml-2 px-2.5 py-1.5 bg-vigorre-dark text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
             Sair
           </span>
         )}
