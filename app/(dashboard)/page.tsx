@@ -20,23 +20,11 @@ export default function DashboardPage() {
     totalClientes: 0,
   })
   const [diagnosticosRecentes, setDiagnosticosRecentes] = useState<any[]>([])
-  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       
-      // Buscar usuário
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-
-      // Buscar dados do usuário
-      const { data: userData } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('auth_user_id', user?.id)
-        .single()
-
       // Buscar diagnósticos
       const { data: diagnosticos } = await supabase
         .from('projetos_diagnostico')
@@ -140,7 +128,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-vigorre-secondary">
           Dashboard
@@ -150,7 +137,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map((card) => (
           <Card key={card.title}>
@@ -171,7 +157,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Diagnósticos Recentes */}
       <Card>
         <CardHeader>
           <CardTitle className="text-vigorre-secondary">
@@ -196,7 +181,7 @@ export default function DashboardPage() {
                 >
                   <div>
                     <h4 className="font-medium text-vigorre-dark">
-                      {diag.titulo}
+                      {diag.titulo || 'Diagnóstico sem título'}
                     </h4>
                     <div className="flex items-center gap-4 mt-1 text-sm text-vigorre-gray-dark">
                       <span>ID: {diag.id.slice(0, 8)}</span>
