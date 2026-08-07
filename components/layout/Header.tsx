@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Search, Menu } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Bell, Menu, User, Settings, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { User, Settings, LogOut } from 'lucide-react'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -69,7 +67,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       </Button>
 
       <div className="flex-1 flex items-center gap-4">
-        {/* Título da página - opcional */}
+        {/* Título da página - opcional, pode ser dinâmico */}
         <h1 className="text-lg font-semibold text-vigorre-secondary hidden md:block">
           Dashboard
         </h1>
@@ -79,7 +77,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Notificações */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5 text-vigorre-gray-dark" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </Button>
 
         {/* Perfil */}
@@ -87,12 +85,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-3 px-2">
               <Avatar className="w-8 h-8 bg-vigorre-primary text-white">
-                <AvatarFallback>
+                <AvatarFallback className="text-xs font-medium">
                   {userData?.nome ? getInitials(userData.nome) : 'V'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium text-vigorre-dark hidden sm:inline">
-                {userData?.nome || user?.email?.split('@')[0]}
+                {userData?.nome || user?.email?.split('@')[0] || 'Usuário'}
               </span>
             </Button>
           </DropdownMenuTrigger>
