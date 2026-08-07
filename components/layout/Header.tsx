@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, Menu } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,8 +14,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { User, Settings, LogOut } from 'lucide-react'
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const supabase = createClient()
   const [user, setUser] = useState<any>(null)
   const [userData, setUserData] = useState<any>(null)
@@ -46,25 +51,38 @@ export function Header() {
       .slice(0, 2)
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/login'
+  }
+
   return (
-    <header className="bg-white border-b border-vigorre-gray-medium h-16 flex items-center px-6 flex-shrink-0">
+    <header className="bg-white border-b border-vigorre-gray-medium h-16 flex items-center px-4 md:px-6 flex-shrink-0">
+      {/* Botão menu mobile */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="md:hidden mr-2"
+        onClick={onMenuClick}
+      >
+        <Menu className="w-5 h-5" />
+      </Button>
+
       <div className="flex-1 flex items-center gap-4">
-        {/* Search - opcional */}
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vigorre-gray-dark" />
-          <Input
-            placeholder="Buscar..."
-            className="pl-9 bg-vigorre-gray-light border-vigorre-gray-medium"
-          />
-        </div>
+        {/* Título da página - opcional */}
+        <h1 className="text-lg font-semibold text-vigorre-secondary hidden md:block">
+          Dashboard
+        </h1>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* Notificações */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5 text-vigorre-gray-dark" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         </Button>
 
+        {/* Perfil */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-3 px-2">
@@ -83,22 +101,22 @@ export function Header() {
               <div className="flex flex-col">
                 <span className="font-medium">{userData?.nome || 'Usuário'}</span>
                 <span className="text-xs text-vigorre-gray-dark">{user?.email}</span>
-                <span className="text-xs text-vigorre-primary mt-1">
+                <span className="text-xs text-vigorre-primary mt-1 font-medium">
                   {userData?.perfil || '—'}
                 </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/perfil'}>
               <User className="w-4 h-4 mr-2" />
               Meu Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/configuracoes'}>
               <Settings className="w-4 h-4 mr-2" />
               Configurações
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-500">
+            <DropdownMenuItem onClick={handleLogout} className="text-red-500">
               <LogOut className="w-4 h-4 mr-2" />
               Sair
             </DropdownMenuItem>
