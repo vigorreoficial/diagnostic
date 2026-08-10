@@ -44,26 +44,7 @@ export class CTIWithKnowledge {
       .eq('ativo', true)
 
     // 3. Buscar conhecimento relevante no Knowledge Hub™
-    const tags = perguntas?.flatMap(p => {
-      // Extrair tags das perguntas
-      const tagsExtras: string[] = []
-      if (p.pergunta.includes('NR-')) {
-        const nrMatch = p.pergunta.match(/NR-(\d+)/)
-        if (nrMatch) tagsExtras.push(`NR-${nrMatch[1]}`)
-      }
-      if (p.pergunta.includes('ISO')) {
-        const isoMatch = p.pergunta.match(/ISO\s*(\d+)/)
-        if (isoMatch) tagsExtras.push(`ISO ${isoMatch[1]}`)
-      }
-      if (p.pergunta.includes('CLT')) {
-        tagsExtras.push('CLT')
-      }
-      if (p.pergunta.includes('LGPD')) {
-        tagsExtras.push('LGPD')
-      }
-      return tagsExtras
-    }) || []
-
+    const tags = this.extrairTags(perguntas || [])
     const conhecimento = await knowledgeClient.buscarPorModulo(modulo.area, tags)
 
     // 4. Registrar consultas no log
@@ -77,12 +58,36 @@ export class CTIWithKnowledge {
     }
 
     // 5. Gerar análise combinando respostas e conhecimento
-    const analise = await this.gerarAnalise(modulo, respostas, perguntas, conhecimento)
+    const analise = await this.gerarAnalise(modulo, respostas, perguntas || [], conhecimento)
 
     // 6. Salvar análise no banco
     await this.salvarAnalise(moduloId, analise, usuarioId)
 
     return analise
+  }
+
+  /**
+   * Extrai tags das perguntas
+   */
+  private extrairTags(perguntas: any[]): string[] {
+    const tags: string[] = []
+    for (const p of perguntas) {
+      if (p.pergunta.includes('NR-')) {
+        const nrMatch = p.pergunta.match(/NR-(\d+)/)
+        if (nrMatch) tags.push(`NR-${nrMatch[1]}`)
+      }
+      if (p.pergunta.includes('ISO')) {
+        const isoMatch = p.pergunta.match(/ISO\s*(\d+)/)
+        if (isoMatch) tags.push(`ISO ${isoMatch[1]}`)
+      }
+      if (p.pergunta.includes('CLT')) {
+        tags.push('CLT')
+      }
+      if (p.pergunta.includes('LGPD')) {
+        tags.push('LGPD')
+      }
+    }
+    return tags
   }
 
   /**
@@ -123,7 +128,7 @@ export class CTIWithKnowledge {
     let parecer = ''
     let recomendacao = ''
 
-    if (conhecimento.length > 0) {
+    if (conhecimento && conhecimento.length > 0) {
       // Usar conhecimento do Hub para fundamentar
       const fontes = conhecimento.map(k => k.fonte).join(', ')
       parecer = `Com base na análise do módulo ${modulo.area} e nas fontes consultadas (${fontes}), `
@@ -145,7 +150,7 @@ export class CTIWithKnowledge {
       recomendacao,
       prioridade,
       confianca: Math.min(0.95, 0.5 + (percentual / 100) * 0.4),
-      fontes_utilizadas: conhecimento.map(k => ({
+      fontes_utilizadas: (conhecimento || []).map(k => ({
         id: k.id,
         titulo: k.titulo,
         fonte: k.fonte,
