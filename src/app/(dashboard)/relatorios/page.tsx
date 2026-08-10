@@ -19,25 +19,56 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+// Mapeamento de cores por tipo
+const TIPO_CORES: Record<string, string> = {
+  'EXECUTIVO': 'bg-[#0F5FA8]',
+  'COMPLETO': 'bg-[#4D90D9]',
+  'PLANO_ACAO': 'bg-green-500',
+  'PREDICAO': 'bg-purple-500',
+  'CTI_COMPLETO': 'bg-indigo-500',
+}
+
+const TIPO_LABELS: Record<string, string> = {
+  'EXECUTIVO': 'Executivo',
+  'COMPLETO': 'Completo',
+  'PLANO_ACAO': 'Plano de Ação',
+  'PREDICAO': 'Predição',
+  'CTI_COMPLETO': 'CTI™ + Knowledge Hub™',
+}
+
 export default function RelatoriosPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [relatorios, setRelatorios] = useState<any[]>([])
   const [filteredRelatorios, setFilteredRelatorios] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [userData, setUserData] = useState<any>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
 
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('auth_user_id', user.id)
+            .single()
+          setUserData(data)
+          setIsAdmin(data?.perfil === 'ADMIN')
+        }
+
         const { data, error } = await supabase
           .from('relatorios')
           .select(`
             *,
             projetos_diagnostico (
+              id,
               titulo,
-              empresas (nome)
+              empresas (id, nome)
             )
           `)
           .order('created_at', { ascending: false })
@@ -67,30 +98,19 @@ export default function RelatoriosPage() {
       const filtered = relatorios.filter(r =>
         r.titulo?.toLowerCase().includes(term) ||
         r.projetos_diagnostico?.titulo?.toLowerCase().includes(term) ||
-        r.projetos_diagnostico?.empresas?.nome?.toLowerCase().includes(term)
+        r.projetos_diagnostico?.empresas?.nome?.toLowerCase().includes(term) ||
+        r.tipo?.toLowerCase().includes(term)
       )
       setFilteredRelatorios(filtered)
     }
   }, [searchTerm, relatorios])
 
   const getTipoLabel = (tipo: string) => {
-    const labels: Record<string, string> = {
-      'EXECUTIVO': 'Executivo',
-      'COMPLETO': 'Completo',
-      'PLANO_ACAO': 'Plano de Ação',
-      'PREDICAO': 'Predição',
-    }
-    return labels[tipo] || tipo
+    return TIPO_LABELS[tipo] || tipo
   }
 
   const getTipoColor = (tipo: string) => {
-    const colors: Record<string, string> = {
-      'EXECUTIVO': 'bg-[#0F5FA8]',
-      'COMPLETO': 'bg-[#4D90D9]',
-      'PLANO_ACAO': 'bg-green-500',
-      'PREDICAO': 'bg-purple-500',
-    }
-    return colors[tipo] || 'bg-gray-500'
+    return TIPO_CORES[tipo] || 'bg-gray-500'
   }
 
   const handleDelete = async (id: string, titulo: string) => {
@@ -116,8 +136,16 @@ export default function RelatoriosPage() {
     }
   }
 
-  const handleDownload = (url: string) => {
-    toast.success('Download iniciado! (simulação)')
+  const handleVisualizar = (relatorio: any) => {
+    // Exibir conteúdo do relatório em uma nova janela
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write('<html><head><title>Relatório</title></head><body><pre style="white-space: pre-wrap; font-family: monospace; padding: 20px;">')
+      win.document.write(relatorio.conteudo || 'Conteúdo do relatório...')
+      win.document.write('</pre></body></html>')
+      win.document.close()
+    }
+    toast.success('Visualizando relatório!')
   }
 
   if (loading) {
@@ -171,6 +199,9 @@ export default function RelatoriosPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full text-white ${getTipoColor(rel.tipo)}`}>
                       {getTipoLabel(rel.tipo)}
                     </span>
+                    {rel.tipo === 'CTI_COMPLETO' && (
+                      <span className="ml-1 text-xs text-indigo-500">🧠 Knowledge Hub™</span>
+                    )}
                     <CardTitle className="text-[#0A3D78] text-base mt-2">
                       {rel.titulo}
                     </CardTitle>
@@ -191,20 +222,28 @@ export default function RelatoriosPage() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleDownload(rel.url)}
+                    onClick={() => handleVisualizar(rel)}
                   >
-                    <Download className="w-4 h-4 mr-1" />
-                    Baixar
+                    <Eye className="w-4 h-4 mr-1" />
+                    Visualizar
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => handleDelete(rel.id, rel.titulo)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDelete(rel.id, rel.titulo)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
+                <Link
+                  href={`/diagnosticos/${rel.projeto_id}`}
+                  className="block text-center text-xs text-[#0F5FA8] hover:underline"
+                >
+                  Ver diagnóstico completo →
+                </Link>
               </CardContent>
             </Card>
           ))}
