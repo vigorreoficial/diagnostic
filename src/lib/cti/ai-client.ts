@@ -21,8 +21,9 @@ export async function chamarGemini(
           },
         ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.3,
           maxOutputTokens: 2048,
+          topP: 0.95,
         },
       }),
     })
@@ -58,8 +59,17 @@ export async function chamarOpenAI(
       },
       body: JSON.stringify({
         model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em gestão empresarial e consultoria organizacional. Suas respostas são técnicas, detalhadas e estruturadas.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
         max_tokens: 2048,
       }),
     })
