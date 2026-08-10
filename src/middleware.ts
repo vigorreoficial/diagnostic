@@ -14,12 +14,12 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        // A correção está nesta linha abaixo (adicionando os tipos)
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
           })
           
-          // Isso força o Next.js a salvar o cookie de sessão na resposta
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -32,21 +32,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // getUser() valida o JWT e renova a sessão automaticamente
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === '/login'
 
-  // 1. Se NÃO tem usuário e NÃO está no login -> Expulsa para o login
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // 2. Se TEM usuário e está no login -> Manda para o dashboard
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
