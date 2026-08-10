@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft,
   Loader2,
@@ -19,7 +20,9 @@ import {
   Upload,
   FileText,
   Save,
-  Send
+  Send,
+  Brain,
+  BookOpen
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Progress } from '@/components/ui/progress'
@@ -69,12 +72,15 @@ export default function ResponderModuloPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [analisando, setAnalisando] = useState(false)
   const [modulo, setModulo] = useState<any>(null)
   const [diagnostico, setDiagnostico] = useState<any>(null)
   const [perguntas, setPerguntas] = useState<Pergunta[]>([])
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({})
   const [userData, setUserData] = useState<any>(null)
   const [progresso, setProgresso] = useState(0)
+  const [analiseCTI, setAnaliseCTI] = useState<any>(null)
+  const [knowledgeUsed, setKnowledgeUsed] = useState<any[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -224,6 +230,54 @@ export default function ResponderModuloPage() {
     }
   }
 
+  const handleAnalisarComCTI = async () => {
+    // Verificar se todas as perguntas foram respondidas
+    const totalPerguntas = perguntas.length
+    const respondidas = Object.keys(respostas).length
+
+    if (respondidas < totalPerguntas) {
+      toast.error(`Responda todas as perguntas antes de analisar (${respondidas}/${totalPerguntas})`)
+      return
+    }
+
+    setAnalisando(true)
+
+    try {
+      // Preparar respostas para envio
+      const respostasArray = Object.values(respostas).map(r => ({
+        pergunta_id: r.pergunta_id,
+        resposta: r.resposta,
+        observacao: r.observacao
+      }))
+
+      // Chamar API de análise
+      const response = await fetch('/api/cti/analisar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moduloId,
+          respostas: respostasArray
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        toast.error('Erro na análise: ' + result.error)
+        return
+      }
+
+      setAnaliseCTI(result.data)
+      setKnowledgeUsed(result.data.fontes_utilizadas || [])
+      toast.success('Análise CTI™ concluída com sucesso!')
+
+    } catch (error) {
+      toast.error('Erro ao analisar com CTI™')
+    } finally {
+      setAnalisando(false)
+    }
+  }
+
   const handleSubmit = async () => {
     // Verificar se todas as perguntas foram respondidas
     const totalPerguntas = perguntas.length
@@ -289,7 +343,6 @@ export default function ResponderModuloPage() {
         } else if (p.tipo === 'ESCALA_1_5') {
           totalPontos += (valor / 5) * p.peso
         } else if (p.tipo === 'MULTIPLA_ESCOLHA' && p.opcoes) {
-          // Para múltipla escolha, considera a primeira opção como correta
           totalPontos += valor === p.opcoes[0] ? p.peso : 0
         }
       }
@@ -494,6 +547,95 @@ export default function ResponderModuloPage() {
           </Card>
         ))}
       </div>
+
+      {/* Painel CTI™ com Knowledge Hub */}
+      <Card className="bg-[#EAF3FC] border-[#0F5FA8]">
+        <CardHeader>
+          <CardTitle className="text-[#0A3D78] flex items-center gap-2">
+            <Brain className="w-5 h-5" />
+            CTI™ - Análise Inteligente
+            <Badge variant="outline" className="ml-2">
+              <BookOpen className="w-3 h-3 mr-1" />
+              Knowledge Hub™
+            </Badge>
+          </CardTitle>
+          <p className="text-sm text-[#5E6C84]">
+            O CTI™ consulta o Knowledge Hub™ para gerar uma análise precisa baseada nas respostas
+          </p>
+        </CardHeader>
+        <CardContent>
+          {analiseCTI ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-1">
+                  {analiseCTI.prioridade === 'CRITICA' && <AlertCircle className="w-5 h-5 text-red-500" />}
+                  {analiseCTI.prioridade === 'ALTA' && <AlertCircle className="w-5 h-5 text-orange-500" />}
+                  {analiseCTI.prioridade === 'MEDIA' && <AlertCircle className="w-5 h-5 text-yellow-500" />}
+                  {analiseCTI.prioridade === 'BAIXA' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className={`
+                      ${analiseCTI.prioridade === 'CRITICA' ? 'bg-red-100 text-red-700' : ''}
+                      ${analiseCTI.prioridade === 'ALTA' ? 'bg-orange-100 text-orange-700' : ''}
+                      ${analiseCTI.prioridade === 'MEDIA' ? 'bg-yellow-100 text-yellow-700' : ''}
+                      ${analiseCTI.prioridade === 'BAIXA' ? 'bg-green-100 text-green-700' : ''}
+                    `}>
+                      {analiseCTI.prioridade}
+                    </Badge>
+                    <Badge variant="outline">
+                      Confiança: {Math.round(analiseCTI.confianca * 100)}%
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-[#1C1F26] mt-2">{analiseCTI.parecer}</p>
+                  <div className="mt-3 p-3 bg-white rounded-lg">
+                    <p className="text-sm font-medium text-[#0F5FA8]">💡 Recomendação</p>
+                    <p className="text-sm text-[#1C1F26] mt-1">{analiseCTI.recomendacao}</p>
+                  </div>
+                  {knowledgeUsed.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-[#5E6C84] flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Fontes consultadas no Knowledge Hub™:
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {knowledgeUsed.map((fonte) => (
+                          <span key={fonte.id} className="px-2 py-0.5 bg-white rounded-full text-xs text-[#0F5FA8] border border-[#D7DEE8]">
+                            {fonte.titulo} (v{fonte.versao})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Button
+              onClick={handleAnalisarComCTI}
+              disabled={analisando || !isCompleto}
+              className="w-full bg-[#0F5FA8] hover:bg-[#0A3D78]"
+            >
+              {analisando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analisando com CTI™ e Knowledge Hub™...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4 mr-2" />
+                  Analisar com CTI™
+                </>
+              )}
+            </Button>
+          )}
+          {!isCompleto && !analiseCTI && (
+            <p className="text-xs text-yellow-600 mt-2 text-center">
+              ⚠️ Responda todas as perguntas para ativar a análise do CTI™
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Ações */}
       <div className="flex gap-4 pt-4 border-t border-[#D7DEE8]">
