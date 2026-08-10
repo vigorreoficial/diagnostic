@@ -6,12 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ArrowLeft,
   Loader2,
   FileText,
-  Download,
   Eye,
   Trash2,
   Plus,
@@ -33,6 +31,24 @@ const TIPOS_RELATORIO = [
   { id: 'PREDICAO', label: 'Relatório de Predição', descricao: 'Projeção de evolução do IMV™', icone: Clock },
   { id: 'CTI_COMPLETO', label: 'CTI™ + Knowledge Hub™', descricao: 'Análise completa com fontes do Knowledge Hub™', icone: Brain },
 ]
+
+// Mapeamento de módulos
+const MODULOS_LABELS: Record<string, string> = {
+  'ESTRATEGIA': 'Estratégia e Governança',
+  'RH': 'Recursos Humanos',
+  'DP': 'Departamento Pessoal',
+  'JURIDICO': 'Jurídico e Compliance',
+  'SST': 'Saúde e Segurança do Trabalho',
+  'NUTRICAO': 'Nutrição Organizacional',
+  'FINANCEIRO': 'Financeiro',
+  'COMERCIAL': 'Comercial e Marketing',
+  'QUALIDADE': 'Qualidade',
+  'MELHORIA_CONTINUA': 'Melhoria Contínua',
+  'OPERACOES': 'Operações e Logística',
+  'COMPRAS': 'Compras e Suprimentos',
+  'TI': 'Tecnologia da Informação',
+  'AGRO': 'Agronegócio',
+}
 
 export default function GerenciarRelatoriosPage() {
   const params = useParams()
@@ -117,12 +133,10 @@ export default function GerenciarRelatoriosPage() {
     setGenerating(true)
 
     try {
-      // Simular geração de relatório
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       const titulo = `${diagnostico?.titulo || 'Diagnóstico'} - ${TIPOS_RELATORIO.find(t => t.id === selectedTipo)?.label}`
 
-      // Gerar conteúdo baseado no tipo
       let conteudo = ''
       let fontes = []
 
@@ -177,6 +191,35 @@ export default function GerenciarRelatoriosPage() {
   // FUNÇÕES DE GERAÇÃO DE RELATÓRIOS
   // ============================================
 
+  const obterNivelMaturidade = (imv: number) => {
+    if (imv >= 901) return '🏆 Excelência'
+    if (imv >= 801) return '✅ Estratégico'
+    if (imv >= 601) return '📊 Gerenciado'
+    if (imv >= 401) return '📋 Estruturado'
+    if (imv >= 201) return '📝 Básico'
+    return '🔴 Inicial'
+  }
+
+  const gerarAcaoSugerida = (area: string, pontuacao: number) => {
+    const acoes: Record<string, string> = {
+      'ESTRATEGIA': pontuacao < 30 ? 'Revisar planejamento estratégico e definir KPIs' : pontuacao < 60 ? 'Estruturar governança e processos de decisão' : 'Fortalecer cultura de inovação e antecipação',
+      'RH': pontuacao < 30 ? 'Implementar onboarding e pesquisa de clima' : pontuacao < 60 ? 'Estruturar PDI e plano de carreira' : 'Fortalecer programa de diversidade e bem-estar',
+      'DP': pontuacao < 30 ? 'Implementar controle de ponto e eSocial' : pontuacao < 60 ? 'Automatizar processos de DP' : 'Otimizar gestão de benefícios e compliance',
+      'JURIDICO': pontuacao < 30 ? 'Implementar programa de compliance' : pontuacao < 60 ? 'Estruturar gestão de contratos' : 'Fortalecer LGPD e governança jurídica',
+      'SST': pontuacao < 30 ? 'Implementar PCMSO e PPRA' : pontuacao < 60 ? 'Estruturar CIPA e treinamentos' : 'Fortalecer cultura de segurança e bem-estar',
+      'NUTRICAO': pontuacao < 30 ? 'Contratar nutricionista e revisar cardápio' : pontuacao < 60 ? 'Implementar BPF e controle de qualidade' : 'Fortalecer educação alimentar',
+      'FINANCEIRO': pontuacao < 30 ? 'Implementar fluxo de caixa e orçamento' : pontuacao < 60 ? 'Estruturar análise de custos e rentabilidade' : 'Fortalecer planejamento e investimentos',
+      'COMERCIAL': pontuacao < 30 ? 'Estruturar processo de vendas e CRM' : pontuacao < 60 ? 'Fortalecer marketing e branding' : 'Otimizar funil de vendas e NPS',
+      'QUALIDADE': pontuacao < 30 ? 'Implementar SGQ básico' : pontuacao < 60 ? 'Estruturar ISO 9001' : 'Fortalecer cultura da qualidade',
+      'MELHORIA_CONTINUA': pontuacao < 30 ? 'Implementar PDCA' : pontuacao < 60 ? 'Estruturar Lean/Seis Sigma' : 'Fortalecer cultura de inovação',
+      'OPERACOES': pontuacao < 30 ? 'Mapear e padronizar processos' : pontuacao < 60 ? 'Implementar OEE e lead time' : 'Otimizar supply chain',
+      'COMPRAS': pontuacao < 30 ? 'Estruturar gestão de fornecedores' : pontuacao < 60 ? 'Implementar análise de spend' : 'Fortalecer negociação e sustentabilidade',
+      'TI': pontuacao < 30 ? 'Estruturar governança de TI' : pontuacao < 60 ? 'Implementar segurança da informação' : 'Fortalecer transformação digital',
+      'AGRO': pontuacao < 30 ? 'Estruturar gestão da propriedade' : pontuacao < 60 ? 'Implementar sustentabilidade' : 'Fortalecer inovação e tecnologia'
+    }
+    return acoes[area] || `Implementar melhorias em ${area}`
+  }
+
   const gerarRelatorioCTICompleto = (diagnostico: any, modulos: any[], analises: any[], knowledge: any[]) => {
     let texto = '╔═══════════════════════════════════════════════════════════════════════╗\n'
     texto += '║                                                                           ║\n'
@@ -192,7 +235,6 @@ export default function GerenciarRelatoriosPage() {
     texto += `🔖 Versão: 3.0 "QUANTUM"\n\n`
     texto += '─'.repeat(80) + '\n\n'
 
-    // Resumo
     const totalModulos = modulos.length
     const concluidos = modulos.filter(m => m.status === 'CONCLUIDO' || m.status === 'VALIDADO').length
     const imv = totalModulos > 0 
@@ -206,7 +248,6 @@ export default function GerenciarRelatoriosPage() {
     texto += `   Nível: ${obterNivelMaturidade(imv)}\n\n`
     texto += '─'.repeat(80) + '\n\n'
 
-    // Análises por módulo
     texto += '📌 ANÁLISE DETALHADA POR MÓDULO\n'
     texto += '─'.repeat(40) + '\n\n'
 
@@ -230,7 +271,6 @@ export default function GerenciarRelatoriosPage() {
         texto += `│  🔴 Prioridade: ${analise.prioridade}\n`
       }
       
-      // Fontes do Knowledge Hub™ utilizadas
       const fontesModulo = knowledge.filter(k => k.modulo_area === modulo.area)
       if (fontesModulo.length > 0) {
         texto += `│\n`
@@ -246,7 +286,6 @@ export default function GerenciarRelatoriosPage() {
       texto += `└─\n\n`
     }
 
-    // Resumo do Knowledge Hub™
     const knowledgeUnicos = knowledge.filter((v, i, a) => 
       a.findIndex(t => t.knowledge_id === v.knowledge_id) === i
     )
@@ -392,7 +431,6 @@ export default function GerenciarRelatoriosPage() {
     for (const modulo of modulosOrdenados) {
       const areaLabel = MODULOS_LABELS[modulo.area] || modulo.area
       const prioridade = (modulo.pontuacao || 0) < 40 ? '🔴 ALTA' : (modulo.pontuacao || 0) < 70 ? '🟡 MÉDIA' : '🟢 BAIXA'
-      const status = (modulo.pontuacao || 0) < 40 ? 'urgente' : (modulo.pontuacao || 0) < 70 ? 'em andamento' : 'concluído'
       
       if (prioridade !== prioridadeAtual) {
         prioridadeAtual = prioridade
@@ -402,8 +440,7 @@ export default function GerenciarRelatoriosPage() {
       
       texto += `   📌 ${areaLabel}\n`
       texto += `      Pontuação atual: ${modulo.pontuacao || 0}%\n`
-      texto += `      Ação: ${gerarAcaoSugerida(modulo.area, modulo.pontuacao || 0)}\n`
-      texto += `      Status: ${status}\n\n`
+      texto += `      Ação: ${gerarAcaoSugerida(modulo.area, modulo.pontuacao || 0)}\n\n`
     }
 
     texto += '═'.repeat(80) + '\n'
@@ -468,35 +505,6 @@ export default function GerenciarRelatoriosPage() {
     return texto
   }
 
-  const obterNivelMaturidade = (imv: number) => {
-    if (imv >= 901) return '🏆 Excelência'
-    if (imv >= 801) return '✅ Estratégico'
-    if (imv >= 601) return '📊 Gerenciado'
-    if (imv >= 401) return '📋 Estruturado'
-    if (imv >= 201) return '📝 Básico'
-    return '🔴 Inicial'
-  }
-
-  const gerarAcaoSugerida = (area: string, pontuacao: number) => {
-    const acoes: Record<string, string> = {
-      'ESTRATEGIA': pontuacao < 30 ? 'Revisar planejamento estratégico e definir KPIs' : pontuacao < 60 ? 'Estruturar governança e processos de decisão' : 'Fortalecer cultura de inovação e antecipação',
-      'RH': pontuacao < 30 ? 'Implementar onboarding e pesquisa de clima' : pontuacao < 60 ? 'Estruturar PDI e plano de carreira' : 'Fortalecer programa de diversidade e bem-estar',
-      'DP': pontuacao < 30 ? 'Implementar controle de ponto e eSocial' : pontuacao < 60 ? 'Automatizar processos de DP' : 'Otimizar gestão de benefícios e compliance',
-      'JURIDICO': pontuacao < 30 ? 'Implementar programa de compliance' : pontuacao < 60 ? 'Estruturar gestão de contratos' : 'Fortalecer LGPD e governança jurídica',
-      'SST': pontuacao < 30 ? 'Implementar PCMSO e PPRA' : pontuacao < 60 ? 'Estruturar CIPA e treinamentos' : 'Fortalecer cultura de segurança e bem-estar',
-      'NUTRICAO': pontuacao < 30 ? 'Contratar nutricionista e revisar cardápio' : pontuacao < 60 ? 'Implementar BPF e controle de qualidade' : 'Fortalecer educação alimentar',
-      'FINANCEIRO': pontuacao < 30 ? 'Implementar fluxo de caixa e orçamento' : pontuacao < 60 ? 'Estruturar análise de custos e rentabilidade' : 'Fortalecer planejamento e investimentos',
-      'COMERCIAL': pontuacao < 30 ? 'Estruturar processo de vendas e CRM' : pontuacao < 60 ? 'Fortalecer marketing e branding' : 'Otimizar funil de vendas e NPS',
-      'QUALIDADE': pontuacao < 30 ? 'Implementar SGQ básico' : pontuacao < 60 ? 'Estruturar ISO 9001' : 'Fortalecer cultura da qualidade',
-      'MELHORIA_CONTINUA': pontuacao < 30 ? 'Implementar PDCA' : pontuacao < 60 ? 'Estruturar Lean/Seis Sigma' : 'Fortalecer cultura de inovação',
-      'OPERACOES': pontuacao < 30 ? 'Mapear e padronizar processos' : pontuacao < 60 ? 'Implementar OEE e lead time' : 'Otimizar supply chain',
-      'COMPRAS': pontuacao < 30 ? 'Estruturar gestão de fornecedores' : pontuacao < 60 ? 'Implementar análise de spend' : 'Fortalecer negociação e sustentabilidade',
-      'TI': pontuacao < 30 ? 'Estruturar governança de TI' : pontuacao < 60 ? 'Implementar segurança da informação' : 'Fortalecer transformação digital',
-      'AGRO': pontuacao < 30 ? 'Estruturar gestão da propriedade' : pontuacao < 60 ? 'Implementar sustentabilidade' : 'Fortalecer inovação e tecnologia'
-    }
-    return acoes[area] || `Implementar melhorias em ${area}`
-  }
-
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este relatório?')) {
       return
@@ -551,7 +559,6 @@ export default function GerenciarRelatoriosPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -572,7 +579,6 @@ export default function GerenciarRelatoriosPage() {
         </div>
       </div>
 
-      {/* Gerar Relatório */}
       <Card>
         <CardHeader>
           <CardTitle className="text-[#0A3D78] flex items-center gap-2">
@@ -638,7 +644,6 @@ export default function GerenciarRelatoriosPage() {
         </CardContent>
       </Card>
 
-      {/* Lista de Relatórios */}
       <Card>
         <CardHeader>
           <CardTitle className="text-[#0A3D78] flex items-center gap-2">
@@ -705,7 +710,6 @@ export default function GerenciarRelatoriosPage() {
         </CardContent>
       </Card>
 
-      {/* Modal de Visualização */}
       {visualizando && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
