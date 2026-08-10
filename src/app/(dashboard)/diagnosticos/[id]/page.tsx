@@ -19,7 +19,7 @@ import {
   AlertCircle,
   Users,
   Award,
-  UserCheck
+  FileText
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -51,6 +51,7 @@ export default function DetalhesDiagnosticoPage() {
   const [userData, setUserData] = useState<any>(null)
   const [auditoresCount, setAuditoresCount] = useState(0)
   const [especialistasCount, setEspecialistasCount] = useState(0)
+  const [relatoriosCount, setRelatoriosCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -116,6 +117,14 @@ export default function DetalhesDiagnosticoPage() {
 
           setEspecialistasCount(especialistasCount || 0)
         }
+
+        // Contar relatórios
+        const { count: relatoriosCount } = await supabase
+          .from('relatorios')
+          .select('*', { count: 'exact', head: true })
+          .eq('projeto_id', id)
+
+        setRelatoriosCount(relatoriosCount || 0)
       } catch (error) {
         toast.error('Erro ao carregar dados')
       } finally {
@@ -291,6 +300,17 @@ export default function DetalhesDiagnosticoPage() {
                 className="text-[#0F5FA8] hover:underline font-medium"
               >
                 Responder Módulos ({modulos.filter(m => m.status === 'CONCLUIDO' || m.status === 'VALIDADO').length}/{modulos.length})
+              </Link>
+            </div>
+
+            {/* Link para Relatórios */}
+            <div className="flex items-center gap-2 text-sm">
+              <FileText className="w-4 h-4 text-[#0F5FA8]" />
+              <Link 
+                href={`/diagnosticos/${diagnostico.id}/relatorios`}
+                className="text-[#0F5FA8] hover:underline font-medium"
+              >
+                Gerenciar Relatórios ({relatoriosCount})
               </Link>
             </div>
 
