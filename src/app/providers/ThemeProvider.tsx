@@ -13,7 +13,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  const [theme, setThemeState] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -22,33 +22,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
     if (savedTheme) {
-      setTheme(savedTheme)
+      setThemeState(savedTheme)
       document.documentElement.classList.toggle('dark', savedTheme === 'dark')
     } else if (prefersDark) {
-      setTheme('dark')
+      setThemeState('dark')
       document.documentElement.classList.toggle('dark', true)
     }
   }, [])
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(newTheme)
+    setThemeState(newTheme)
     localStorage.setItem('theme', newTheme)
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
   }
 
-  const setThemeAndSave = (newTheme: Theme) => {
-    setTheme(newTheme)
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme)
     localStorage.setItem('theme', newTheme)
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
+  // ✅ SEMPRE envolve com o Provider, mesmo antes de montar
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme: setThemeAndSave }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )
