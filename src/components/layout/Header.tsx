@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Menu, User, Settings, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -68,10 +70,27 @@ export function Header({ onMenuClick }: HeaderProps) {
         <Menu className="w-5 h-5" />
       </Button>
 
-      <div className="flex-1 flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-[#0A3D78] dark:text-[#6BA3E0] hidden md:block">
-          Dashboard
-        </h1>
+      <div className="flex-1 flex items-center gap-3">
+        {/* Logo + Nome */}
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <Image
+              src="/logo-vigorre.png"
+              alt="Vigorre Diagnostics"
+              fill
+              className="object-contain rounded-lg"
+              priority
+            />
+          </div>
+          <div className="hidden sm:block">
+            <h1 className="text-lg font-semibold text-[#0A3D78] dark:text-[#6BA3E0]">
+              Vigorre Diagnostics™
+            </h1>
+            <p className="text-[10px] text-[#5E6C84] dark:text-[#94a3b8] -mt-0.5 leading-tight">
+              Dados que transformam decisões.
+            </p>
+          </div>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
