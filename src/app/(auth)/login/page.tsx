@@ -38,8 +38,6 @@ export default function LoginPage() {
     } catch (error) {
       toast.error('Ocorreu um erro inesperado.')
       setIsLoading(false)
-    } finally {
-      setIsLoading(false)
     }
   }
 
