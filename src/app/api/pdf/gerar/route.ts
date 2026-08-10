@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { diagnosticoId, tipo } = await request.json()
+    const body = await request.json()
+    const { diagnosticoId, tipo } = body
 
     if (!diagnosticoId || !tipo) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
@@ -42,13 +43,13 @@ export async function POST(request: NextRequest) {
 
     // Gerar PDF
     const pdfStream = await renderToStream(
-      <RelatorioPDF
-        diagnostico={diagnostico}
-        modulos={modulos || []}
-        analises={analises || []}
-        knowledge={knowledge || []}
-        tipo={tipo}
-      />
+      RelatorioPDF({
+        diagnostico: diagnostico,
+        modulos: modulos || [],
+        analises: analises || [],
+        knowledge: knowledge || [],
+        tipo: tipo
+      })
     )
 
     return new NextResponse(pdfStream as any, {
