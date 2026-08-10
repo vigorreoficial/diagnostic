@@ -51,12 +51,16 @@ export default function PredicaoPage() {
           .from('modulos_diagnostico')
           .select('*')
           .eq('projeto_id', diagnosticoId)
-        setModulos(modulosData || [])
+        
+        const modulosList = modulosData || []
+        setModulos(modulosList)
 
         // Calcular IMV atual (média das pontuações)
-        const imv = modulosData?.length > 0
-          ? Math.round(modulosData.reduce((acc, m) => acc + (m.pontuacao || 0), 0) / modulosData.length)
-          : 0
+        let imv = 0
+        if (modulosList.length > 0) {
+          const total = modulosList.reduce((acc, m) => acc + (m.pontuacao || 0), 0)
+          imv = Math.round(total / modulosList.length)
+        }
         setImvAtual(imv)
 
         // Gerar projeções
@@ -64,7 +68,7 @@ export default function PredicaoPage() {
 
         // Buscar ações para impacto
         const { data: acoesData } = await supabase
-          .from('acoes_plano')  // Tabela de plano de ação
+          .from('acoes_plano')
           .select('*')
           .eq('projeto_id', diagnosticoId)
           .eq('status', 'PENDENTE')
@@ -114,7 +118,7 @@ export default function PredicaoPage() {
   }
 
   const gerarRecomendacoes = (imvBase: number, cenarioSelecionado: Cenario) => {
-    const recomendações: Record<Cenario, string[]> = {
+    const recomendacoes: Record<Cenario, string[]> = {
       'OTIMISTA': [
         '✅ Continue implementando as ações corretivas',
         '🚀 Invista em inovação e tecnologia',
@@ -132,7 +136,6 @@ export default function PredicaoPage() {
       ]
     }
 
-    // Adicionar recomendações específicas baseadas no IMV atual
     const recomendacoesEspecificas = []
     if (imvBase < 400) {
       recomendacoesEspecificas.push('🔴 Priorize ações de curto prazo para sair do nível básico')
@@ -144,7 +147,7 @@ export default function PredicaoPage() {
       recomendacoesEspecificas.push('🏆 Busque a excelência com inovação e diferenciação')
     }
 
-    setAcoesRecomendadas([...recomendações[cenarioSelecionado], ...recomendacoesEspecificas])
+    setAcoesRecomendadas([...recomendacoes[cenarioSelecionado], ...recomendacoesEspecificas])
   }
 
   const handleCenarioChange = (novoCenario: Cenario) => {
@@ -196,7 +199,7 @@ export default function PredicaoPage() {
           Voltar
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-[#0A3D78">Predição - IMV™</h1>
+          <h1 className="text-2xl font-bold text-[#0A3D78]">Predição - IMV™</h1>
           <p className="text-[#5E6C84] text-sm">
             {diagnostico?.titulo} - {diagnostico?.empresas?.nome || 'Empresa'}
           </p>
@@ -266,7 +269,6 @@ export default function PredicaoPage() {
         </CardHeader>
         <CardContent>
           <div className="relative h-[300px]">
-            {/* Eixo Y */}
             <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between text-xs text-[#5E6C84]">
               <span>1000</span>
               <span>750</span>
@@ -275,17 +277,14 @@ export default function PredicaoPage() {
               <span>0</span>
             </div>
 
-            {/* Área do gráfico */}
             <div className="absolute left-12 right-0 top-0 bottom-0">
               <div className="relative w-full h-full">
-                {/* Linhas de grade */}
                 <div className="absolute inset-0 flex flex-col justify-between">
                   {[0, 1, 2, 3, 4].map((i) => (
                     <div key={i} className="border-t border-[#D7DEE8] w-full" />
                   ))}
                 </div>
 
-                {/* Barras de projeção */}
                 <div className="absolute inset-0 flex items-end justify-around px-4 pb-4">
                   {projecoes.map((projecao, index) => {
                     const altura = (projecao.imv / 1000) * 100
@@ -317,7 +316,6 @@ export default function PredicaoPage() {
                   })}
                 </div>
 
-                {/* Linha de base (IMV atual) */}
                 <div
                   className="absolute left-0 right-0 border-t-2 border-dashed border-[#0F5FA8]"
                   style={{ bottom: `${(imvAtual / 1000) * 100}%` }}
@@ -330,7 +328,6 @@ export default function PredicaoPage() {
             </div>
           </div>
 
-          {/* Legenda */}
           <div className="flex justify-center gap-6 mt-4 text-xs text-[#5E6C84]">
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 bg-[#0F5FA8] rounded" />
@@ -340,12 +337,6 @@ export default function PredicaoPage() {
               <span className="w-3 h-3 border-2 border-dashed border-[#0F5FA8]" />
               IMV Atual
             </span>
-            {projecoes.map((p, i) => (
-              <span key={i} className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.imv >= 800 ? '#22c55e' : p.imv >= 600 ? '#eab308' : '#ef4444' }} />
-                {p.mes}
-              </span>
-            ))}
           </div>
         </CardContent>
       </Card>
