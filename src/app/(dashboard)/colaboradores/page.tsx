@@ -30,6 +30,7 @@ export default function ColaboradoresPage() {
   const [filteredColaboradores, setFilteredColaboradores] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [userData, setUserData] = useState<any>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,15 +46,21 @@ export default function ColaboradoresPage() {
             .eq('auth_user_id', user.id)
             .single()
           setUserData(userInfo)
+          setIsAdmin(userInfo?.perfil === 'ADMIN')
 
-          // Verificar se é ADMIN
+          // Se não for ADMIN, redirecionar
           if (userInfo?.perfil !== 'ADMIN') {
             toast.error('Acesso negado. Apenas administradores podem ver colaboradores.')
+            setLoading(false)
             return
           }
+        } else {
+          // Se não tem usuário, redirecionar para login
+          window.location.href = '/login'
+          return
         }
 
-        // Buscar colaboradores
+        // Buscar colaboradores (apenas ADMIN chega aqui)
         const { data, error } = await supabase
           .from('usuarios')
           .select('*')
@@ -151,9 +158,8 @@ export default function ColaboradoresPage() {
     return labels[perfil] || perfil
   }
 
-  const isAdmin = userData?.perfil === 'ADMIN'
-
-  if (!isAdmin) {
+  // Se não for ADMIN, mostra mensagem de acesso negado
+  if (!isAdmin && !loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Card className="max-w-md">
@@ -163,6 +169,12 @@ export default function ColaboradoresPage() {
             <p className="text-[#5E6C84] text-sm">
               Apenas administradores podem acessar esta página.
             </p>
+            <Button 
+              className="mt-4 bg-[#0F5FA8] hover:bg-[#0A3D78]"
+              onClick={() => window.location.href = '/'}
+            >
+              Voltar para o Dashboard
+            </Button>
           </CardContent>
         </Card>
       </div>
