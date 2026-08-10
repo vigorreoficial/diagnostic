@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // 1. Criar uma resposta inicial
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -16,12 +15,11 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Setar no request
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
           })
           
-          // REcriar a resposta e setar os cookies nela (Isso é crucial para o Next.js!)
+          // Isso força o Next.js a salvar o cookie de sessão na resposta
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -34,31 +32,27 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 2. IMPORTANTE: Use getUser() em vez de getSession()
-  // getUser() valida o token JWT e renova os cookies automaticamente se necessário
+  // getUser() valida o JWT e renova a sessão automaticamente
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === '/login'
-  const isRoot = request.nextUrl.pathname === '/'
 
-  // 3. Lógica de Redirecionamento
-  // Se NÃO tem usuário e NÃO está no login -> Manda para o login
+  // 1. Se NÃO tem usuário e NÃO está no login -> Expulsa para o login
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Se TEM usuário e está no login -> Manda para o dashboard (raiz)
+  // 2. Se TEM usuário e está no login -> Manda para o dashboard
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  // Se tiver usuário e estiver na raiz, apenas deixa passar
   return supabaseResponse
 }
 
