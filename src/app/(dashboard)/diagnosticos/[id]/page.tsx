@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Users,
   Award,
-  FileText
+  FileText,
+  TrendingUp
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -311,6 +312,17 @@ export default function DetalhesDiagnosticoPage() {
                 className="text-[#0F5FA8] hover:underline font-medium"
               >
                 Gerenciar Relatórios ({relatoriosCount})
+              </Link>
+            </div>
+
+            {/* Link para Plano de Ação */}
+            <div className="flex items-center gap-2 text-sm">
+              <TrendingUp className="w-4 h-4 text-[#0F5FA8]" />
+              <Link 
+                href={`/diagnosticos/${diagnostico.id}/plano-acao`}
+                className="text-[#0F5FA8] hover:underline font-medium"
+              >
+                Plano de Ação
               </Link>
             </div>
 
