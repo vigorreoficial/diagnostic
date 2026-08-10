@@ -25,6 +25,28 @@
     --ring: 210 100% 36%;
     --radius: 0.5rem;
   }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 100% 50%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
 }
 
 @layer base {
@@ -36,7 +58,38 @@
   }
 }
 
-/* Scrollbar personalizada */
+/* Cores customizadas Vigorre com suporte a dark mode */
+@layer components {
+  .bg-vigorre-primary {
+    @apply bg-[#0F5FA8] dark:bg-[#1A6FB8];
+  }
+  .bg-vigorre-secondary {
+    @apply bg-[#0A3D78] dark:bg-[#1A4D88];
+  }
+  .bg-vigorre-very-light {
+    @apply bg-[#EAF3FC] dark:bg-[#1a2a3a];
+  }
+  .bg-vigorre-gray-light {
+    @apply bg-[#F7F8FA] dark:bg-[#1a1f2a];
+  }
+  .text-vigorre-primary {
+    @apply text-[#0F5FA8] dark:text-[#4D90D9];
+  }
+  .text-vigorre-secondary {
+    @apply text-[#0A3D78] dark:text-[#6BA3E0];
+  }
+  .text-vigorre-dark {
+    @apply text-[#072F5F] dark:text-[#8ab4e8];
+  }
+  .text-vigorre-gray-dark {
+    @apply text-[#5E6C84] dark:text-[#94a3b8];
+  }
+  .border-vigorre-gray-medium {
+    @apply border-[#D7DEE8] dark:border-[#2a3a4a];
+  }
+}
+
+/* Scrollbar personalizada - dark mode */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -46,13 +99,25 @@
   background: #F7F8FA;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1a1f2a;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #D7DEE8;
   border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #2a3a4a;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #0F5FA8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4D90D9;
 }
 
 /* Animações */
