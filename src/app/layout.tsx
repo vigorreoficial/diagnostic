@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
 import { Toaster } from 'sonner'
-
-const inter = Inter({ subsets: ['latin'] })
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Vigorre Diagnostics™',
@@ -12,14 +9,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
+      <body>
         {children}
-        <Toaster position="top-right" richColors />
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   )
