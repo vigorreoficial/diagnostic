@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
+  // Criar resposta
+  const response = NextResponse.next({
     request,
   })
 
@@ -18,38 +19,54 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
           })
-          supabaseResponse = NextResponse.next({
-            request,
-          })
           cookiesToSet.forEach(({ name, value, options }) => {
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           })
         },
       },
     }
   )
 
+  // Verificar sessão
   const { data: { session } } = await supabase.auth.getSession()
 
-  const publicRoutes = ['/login']
-  const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname.startsWith(route)
-  )
+  const isLoginPage = request.nextUrl.pathname === '/login'
+  const isRoot = request.nextUrl.pathname === '/'
 
-  if (!session && !isPublicRoute) {
+  // Se não tem sessão e não está na página de login -> vai para login
+  if (!session && !isLoginPage) {
     const url = new URL('/login', request.url)
     return NextResponse.redirect(url)
   }
 
-  if (session && isPublicRoute) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // Se tem sessão e está na página de login -> vai para dashboard
+  if (session && isLoginPage) {
+    const url = new URL('/', request.url)
+    return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  // Se tem sessão e está na raiz -> vai para dashboard
+  if (session && isRoot) {
+    return NextResponse.next()
+  }
+
+  // Se não tem sessão e está na página de login -> mostra login
+  if (!session && isLoginPage) {
+    return NextResponse.next()
+  }
+
+  return response
 }
 
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
