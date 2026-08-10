@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -59,7 +61,6 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
 } from 'lucide-react'
-import Link from 'next/link'
 
 // Mapeamento de módulos para exibição
 const MODULOS_LABELS: Record<string, string> = {
@@ -180,7 +181,6 @@ export default function DashboardPage() {
         return
       }
 
-      // Buscar diagnóstico do cliente
       const { data: diagData } = await supabase
         .from('projetos_diagnostico')
         .select(`
@@ -194,7 +194,6 @@ export default function DashboardPage() {
         setClienteDiagnostico(diagData)
         setDiagnosticosRecentes([diagData])
 
-        // Buscar módulos do diagnóstico
         const { data: modulosData } = await supabase
           .from('modulos_diagnostico')
           .select('*')
@@ -202,7 +201,6 @@ export default function DashboardPage() {
 
         setClienteModulos(modulosData || [])
 
-        // Calcular IMV do cliente
         if (modulosData && modulosData.length > 0) {
           const totalPeso = modulosData.reduce((acc, m) => acc + (m.peso || 0), 0)
           const totalPontos = modulosData.reduce((acc, m) => acc + (m.pontuacao || 0), 0)
@@ -325,7 +323,6 @@ export default function DashboardPage() {
 
     setStats({ total, emAndamento, concluidos, imvMedio, imvMax, imvMin })
 
-    // Radar
     const areas = ['ESTRATEGIA', 'RH', 'DP', 'JURIDICO', 'SST', 'NUTRICAO', 'FINANCEIRO', 'COMERCIAL', 'QUALIDADE', 'MELHORIA_CONTINUA', 'OPERACOES', 'COMPRAS', 'TI', 'AGRO']
     const radarMap: Record<string, number> = {}
     areas.forEach((area) => {
@@ -340,7 +337,6 @@ export default function DashboardPage() {
     })
     setRadarData(areas.map((area) => ({ area: MODULOS_LABELS[area] || area, valor: radarMap[area] || 0, fullMark: 100 })))
 
-    // Bar
     const barMap: Record<string, number> = {}
     diagData.forEach((diag) => {
       const nome = diag.empresas?.nome || 'Empresa'
@@ -353,7 +349,6 @@ export default function DashboardPage() {
     })
     setBarData(Object.entries(barMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([nome, valor]) => ({ nome: nome.length > 15 ? nome.slice(0, 15) + '...' : nome, IMV: valor })))
 
-    // Line
     const lineMap: Record<string, number> = {}
     diagData.forEach((diag) => {
       const data = new Date(diag.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
@@ -368,7 +363,6 @@ export default function DashboardPage() {
     const sortedKeys = Object.keys(lineMap).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
     setLineData(sortedKeys.slice(-6).map((key) => ({ mes: key, IMV: lineMap[key] })))
 
-    // Pie
     const pieMap: Record<string, number> = {}
     diagData.forEach((diag) => {
       const status = diag.status
@@ -381,7 +375,6 @@ export default function DashboardPage() {
     }
     setPieData(Object.entries(pieMap).map(([status, count]) => ({ status: getStatusLabel(status), count, color: CORES_STATUS[status as keyof typeof CORES_STATUS] || '#94a3b8' })))
 
-    // Heatmap
     const heatmapMap: Record<string, { area: string; risco: number }> = {}
     areas.forEach((area) => {
       const modulosArea = modulosData.filter((m) => m.area === area)
@@ -474,7 +467,6 @@ export default function DashboardPage() {
     const modulos = clienteModulos
     const imv = clienteIMV
 
-    // Dados para o gráfico de módulos
     const modulosChartData = modulos.map((m, index) => ({
       nome: MODULOS_LABELS[m.area] || m.area,
       valor: m.pontuacao || 0,
@@ -487,7 +479,6 @@ export default function DashboardPage() {
 
     return (
       <div className="space-y-6">
-        {/* Cabeçalho */}
         <div>
           <h1 className="text-2xl font-bold text-[#0A3D78] flex items-center gap-2">
             <Eye className="w-6 h-6" />
@@ -515,7 +506,6 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
-            {/* Resumo do Diagnóstico */}
             <Card>
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -544,7 +534,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Progresso dos Módulos */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-[#0A3D78] flex items-center gap-2">
@@ -584,7 +573,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Status dos Módulos */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-[#0A3D78] flex items-center gap-2">
@@ -622,7 +610,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Botão para ver detalhes */}
             <Link href={`/diagnosticos/${diagnostico.id}`}>
               <Button className="w-full bg-[#0F5FA8] hover:bg-[#0A3D78]">
                 Ver detalhes completos do diagnóstico
@@ -658,7 +645,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0A3D78]">Dashboard</h1>
@@ -690,7 +676,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Cards */}
       {cardsVisiveis.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {cardsVisiveis.map((card) => (
@@ -713,7 +698,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Gráficos */}
       {!isCliente && (
         <Tabs defaultValue="radar" className="space-y-6">
           <TabsList className="flex flex-wrap">
@@ -729,7 +713,7 @@ export default function DashboardPage() {
               <Card className={isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">Radar de Maturidade</CardTitle>
-                  <CardDescription>Distribuição da maturidade por área de diagnóstico</CardDescription>
+                  <CardDescription>Distribuição da maturidade por área</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[400px]">
@@ -879,7 +863,6 @@ export default function DashboardPage() {
         </Tabs>
       )}
 
-      {/* Diagnósticos Recentes */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-[#0A3D78]">📋 Diagnósticos Recentes</CardTitle>
