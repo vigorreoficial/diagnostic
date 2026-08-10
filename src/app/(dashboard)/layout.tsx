@@ -1,16 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const router = useRouter()
+  const supabase = createClient()
+  const [isLoading, setIsLoading] = useState(true)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+      }
+      setIsLoading(false)
+    }
+    checkSession()
+  }, [router, supabase])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#F7F8FA]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0F5FA8]"></div>
+      </div>
+    )
+  }
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed)
