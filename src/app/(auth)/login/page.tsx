@@ -33,8 +33,8 @@ export default function LoginPage() {
 
       if (data?.user) {
         toast.success('Login realizado com sucesso!')
-        // Força o recarregamento da página para atualizar os cookies no servidor
-        window.location.href = '/' 
+        // Força recarregamento completo para o middleware ler o cookie
+        window.location.href = '/'
       }
     } catch (error) {
       toast.error('Ocorreu um erro inesperado.')
