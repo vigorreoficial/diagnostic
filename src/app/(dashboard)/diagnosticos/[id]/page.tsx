@@ -282,10 +282,21 @@ export default function DetalhesDiagnosticoPage() {
               </span>
             </div>
 
-            {/* ⬇️⬇️⬇️ NOVOS LINKS AQUI ⬇️⬇️⬇️ */}
+            {/* Link para Módulos do Diagnóstico */}
+            <div className="pt-2 mt-2 border-t border-[#D7DEE8]" />
+            <div className="flex items-center gap-2 text-sm">
+              <ClipboardList className="w-4 h-4 text-[#0F5FA8]" />
+              <Link 
+                href={`/diagnosticos/${diagnostico.id}/modulos`}
+                className="text-[#0F5FA8] hover:underline font-medium"
+              >
+                Responder Módulos ({modulos.filter(m => m.status === 'CONCLUIDO' || m.status === 'VALIDADO').length}/{modulos.length})
+              </Link>
+            </div>
+
+            {/* Links para Auditores e Especialistas (apenas ADMIN) */}
             {isAdmin && (
               <>
-                <div className="pt-2 mt-2 border-t border-[#D7DEE8]" />
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-[#5E6C84]" />
                   <span className="text-[#5E6C84]">Auditores:</span>
@@ -335,9 +346,16 @@ export default function DetalhesDiagnosticoPage() {
                         peso {modulo.peso}%
                       </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getModuloStatusColor(modulo.status)}`}>
-                      {getModuloStatusLabel(modulo.status)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {modulo.pontuacao > 0 && (
+                        <span className="text-xs font-medium text-[#0F5FA8]">
+                          {modulo.pontuacao}%
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getModuloStatusColor(modulo.status)}`}>
+                        {getModuloStatusLabel(modulo.status)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
