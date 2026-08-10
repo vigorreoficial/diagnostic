@@ -23,21 +23,25 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
         toast.error('Erro ao fazer login: ' + error.message)
+        setIsLoading(false)
         return
       }
 
-      toast.success('Login realizado com sucesso!')
-      router.push('/')
-      router.refresh()
+      if (data?.user) {
+        toast.success('Login realizado com sucesso!')
+        // Forçar redirecionamento
+        window.location.href = '/'
+      }
     } catch (error) {
       toast.error('Ocorreu um erro inesperado.')
+      setIsLoading(false)
     } finally {
       setIsLoading(false)
     }
