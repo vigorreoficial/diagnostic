@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+// Mapeamento de módulos
 const MODULOS = [
   { id: 'ESTRATEGIA', label: 'Estratégia e Governança' },
   { id: 'RH', label: 'Recursos Humanos' },
@@ -35,6 +36,14 @@ const MODULOS = [
   { id: 'COMPRAS', label: 'Compras e Suprimentos' },
   { id: 'TI', label: 'Tecnologia da Informação' },
   { id: 'AGRO', label: 'Agronegócio' },
+]
+
+// Mapeamento de tipos de pergunta
+const TIPOS = [
+  { id: 'SIM_NAO', label: 'Sim / Não' },
+  { id: 'ESCALA_1_5', label: 'Escala 1-5' },
+  { id: 'TEXTO', label: 'Texto' },
+  { id: 'MULTIPLA_ESCOLHA', label: 'Múltipla Escolha' },
 ]
 
 export default function GerenciarPerguntasPage() {
@@ -155,7 +164,6 @@ export default function GerenciarPerguntasPage() {
         toast.success('Pergunta criada com sucesso!')
       }
 
-      // Resetar formulário
       setFormData({
         modulo_area: '',
         pergunta: '',
@@ -167,7 +175,6 @@ export default function GerenciarPerguntasPage() {
       setShowForm(false)
       setEditingId(null)
 
-      // Recarregar perguntas
       const { data: refreshed } = await supabase
         .from('perguntas')
         .select('*')
@@ -337,10 +344,11 @@ export default function GerenciarPerguntasPage() {
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SIM_NAO">Sim / Não</SelectItem>
-                      <SelectItem value="ESCALA_1_5">Escala 1-5</SelectItem>
-                      <SelectItem value="TEXTO">Texto</SelectItem>
-                      <SelectItem value="MULTIPLA_ESCOLHA">Múltipla Escolha</SelectItem>
+                      {TIPOS.map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.id}>
+                          {tipo.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -394,7 +402,8 @@ export default function GerenciarPerguntasPage() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button                  type="button"
+                <Button
+                  type="button"
                   variant="outline"
                   className="flex-1"
                   onClick={() => {
@@ -458,7 +467,7 @@ export default function GerenciarPerguntasPage() {
                       </div>
                       <p className="text-[#1C1F26] mt-1">{pergunta.pergunta}</p>
                       <div className="flex items-center gap-4 mt-1 text-xs text-[#5E6C84]">
-                        <span>Tipo: {pergunta.tipo}</span>
+                        <span>Tipo: {TIPOS.find(t => t.id === pergunta.tipo)?.label || pergunta.tipo}</span>
                         <span>Peso: {pergunta.peso}</span>
                         <span>Ordem: {pergunta.ordem || 0}</span>
                         {pergunta.opcoes && (
