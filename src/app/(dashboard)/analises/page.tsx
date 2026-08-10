@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 const MODULOS_LABELS: Record<string, string> = {
   'ESTRATEGIA': 'Estratégia',
   'RH': 'RH',
-  'DP': 'Depto Pessoal',
+  'DP': 'DP',
   'JURIDICO': 'Jurídico',
   'SST': 'SST',
   'NUTRICAO': 'Nutrição',
@@ -63,7 +63,6 @@ export default function AnalisesPage() {
           setUserData(data)
         }
 
-        // Buscar diagnósticos
         const { data: diagnosticos } = await supabase
           .from('projetos_diagnostico')
           .select(`
@@ -73,18 +72,15 @@ export default function AnalisesPage() {
           `)
           .order('created_at', { ascending: false })
 
-        // Buscar módulos
         const { data: modulos } = await supabase
           .from('modulos_diagnostico')
           .select('*')
           .eq('status', 'CONCLUIDO')
 
-        // Buscar clientes
         const { data: clientes } = await supabase
           .from('empresas')
           .select('id')
 
-        // Calcular estatísticas
         const total = diagnosticos?.length || 0
         const emAndamento = diagnosticos?.filter(d => 
           d.status !== 'ENTREGA' && d.status !== 'MONITORAMENTO'
@@ -93,7 +89,6 @@ export default function AnalisesPage() {
           d.status === 'ENTREGA' || d.status === 'MONITORAMENTO'
         ).length || 0
 
-        // Calcular IMV médio (usando pontuação dos módulos)
         let imvTotal = 0
         let imvMax = 0
         if (modulos) {
@@ -119,7 +114,7 @@ export default function AnalisesPage() {
           imvMaximo: imvMax,
           emAndamento,
           concluidos,
-          evolucao: 12, // Placeholder - será calculado depois
+          evolucao: 12,
         })
 
         setDiagnosticosRecentes(diagnosticos?.slice(0, 5) || [])
@@ -294,7 +289,6 @@ export default function AnalisesPage() {
           <div className="h-[400px] flex items-center justify-center bg-[#F7F8FA] rounded-lg">
             <div className="text-center text-[#5E6C84]">
               <div className="w-64 h-64 mx-auto relative">
-                {/* Simulação visual de radar */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-full h-full rounded-full border-2 border-[#D7DEE8]">
                     <div className="absolute inset-[10%] rounded-full border-2 border-[#D7DEE8]"></div>
@@ -302,7 +296,6 @@ export default function AnalisesPage() {
                     <div className="absolute inset-[50%] rounded-full border-2 border-[#D7DEE8]"></div>
                     <div className="absolute inset-[70%] rounded-full border-2 border-[#D7DEE8]"></div>
                     
-                    {/* Linhas do radar */}
                     {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
                       <div
                         key={i}
@@ -316,7 +309,6 @@ export default function AnalisesPage() {
                       </div>
                     ))}
 
-                    {/* Área preenchida simulada */}
                     <div className="absolute inset-[15%] bg-[#0F5FA8]/20 rounded-full">
                       <div className="absolute inset-0 bg-[#0F5FA8]/10" 
                         style={{
@@ -325,7 +317,6 @@ export default function AnalisesPage() {
                       />
                     </div>
 
-                    {/* Rótulos */}
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-medium text-[#0A3D78]">Estratégia</div>
                     <div className="absolute top-1/2 -right-16 -translate-y-1/2 text-xs font-medium text-[#0A3D78]">RH</div>
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs font-medium text-[#0A3D78]">Qualidade</div>
