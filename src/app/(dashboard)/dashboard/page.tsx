@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
 import {
   Radar,
   RadarChart,
@@ -57,6 +56,8 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -77,6 +78,12 @@ const MODULOS_LABELS: Record<string, string> = {
   TI: 'TI',
   AGRO: 'Agronegócio',
 }
+
+const CORES_MODULOS = [
+  '#0F5FA8', '#4D90D9', '#0A3D78', '#072F5F', '#2E7DB5',
+  '#6BA3E0', '#1A5A9E', '#3A7FC7', '#0B4A8A', '#5A9FD6',
+  '#2A6FB0', '#4A8FD0', '#1A5AA0', '#3A80C0'
+]
 
 const CORES_STATUS = {
   CADASTRO: '#94a3b8',
@@ -119,16 +126,19 @@ export default function DashboardPage() {
   const [periodo, setPeriodo] = useState('6')
   const [userId, setUserId] = useState<string>('')
 
+  // Estado específico para CLIENTE
+  const [clienteDiagnostico, setClienteDiagnostico] = useState<any>(null)
+  const [clienteModulos, setClienteModulos] = useState<any[]>([])
+  const [clienteIMV, setClienteIMV] = useState(0)
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // 1. Buscar usuário logado
         const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
 
         if (user) {
-          // 2. Buscar dados do usuário na tabela public
           const { data: userInfo } = await supabase
             .from('usuarios')
             .select('*')
@@ -141,7 +151,6 @@ export default function DashboardPage() {
           const perfilUsuario = userInfo?.perfil || ''
           setPerfil(perfilUsuario)
           
-          // 3. Definir permissões
           setIsAdmin(perfilUsuario === 'ADMIN')
           setIsConsultor(perfilUsuario === 'CONSULTOR')
           setIsAuditor(perfilUsuario === 'AUDITOR')
@@ -149,7 +158,6 @@ export default function DashboardPage() {
           setIsCliente(perfilUsuario === 'CLIENTE')
         }
 
-        // 4. Buscar dados conforme perfil
         await fetchDadosPorPerfil()
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
@@ -162,24 +170,62 @@ export default function DashboardPage() {
   }, [supabase])
 
   const fetchDadosPorPerfil = async () => {
+    // ============================================
+    // SE FOR CLIENTE - BUSCA APENAS SEU DIAGNÓSTICO
+    // ============================================
+    if (isCliente) {
+      const empresaId = userData?.empresa_id
+      if (!empresaId) {
+        setLoading(false)
+        return
+      }
+
+      // Buscar diagnóstico do cliente
+      const { data: diagData } = await supabase
+        .from('projetos_diagnostico')
+        .select(`
+          *,
+          empresas (id, nome, cnpj, porte, segmento)
+        `)
+        .eq('empresa_id', empresaId)
+        .single()
+
+      if (diagData) {
+        setClienteDiagnostico(diagData)
+        setDiagnosticosRecentes([diagData])
+
+        // Buscar módulos do diagnóstico
+        const { data: modulosData } = await supabase
+          .from('modulos_diagnostico')
+          .select('*')
+          .eq('projeto_id', diagData.id)
+
+        setClienteModulos(modulosData || [])
+
+        // Calcular IMV do cliente
+        if (modulosData && modulosData.length > 0) {
+          const totalPeso = modulosData.reduce((acc, m) => acc + (m.peso || 0), 0)
+          const totalPontos = modulosData.reduce((acc, m) => acc + (m.pontuacao || 0), 0)
+          const imv = totalPeso > 0 ? Math.round((totalPontos / totalPeso) * 100) : 0
+          setClienteIMV(imv)
+        }
+      }
+      setLoading(false)
+      return
+    }
+
+    // ============================================
+    // DEMAIS PERFIS - DADOS COMPLETOS
+    // ============================================
     let query = supabase.from('projetos_diagnostico').select(`
       *,
       empresas (id, nome),
       usuarios (id, nome)
     `)
 
-    // ============================================
-    // FILTROS POR PERFIL (CONFORME PRD)
-    // ============================================
-
-    if (isAdmin) {
-      // ADMIN: Vê TUDO
-      // Sem filtros adicionais
-    } else if (isConsultor) {
-      // CONSULTOR: Vê APENAS seus diagnósticos
+    if (isConsultor) {
       query = query.eq('responsavel_id', userId)
     } else if (isAuditor) {
-      // AUDITOR: Vê APENAS diagnósticos onde é auditor
       const { data: auditorias } = await supabase
         .from('modulo_auditor')
         .select('projeto_id')
@@ -189,7 +235,6 @@ export default function DashboardPage() {
       if (projetoIds.length > 0) {
         query = query.in('id', projetoIds)
       } else {
-        // Se não for auditor de nenhum projeto, retorna vazio
         setStats({ total: 0, emAndamento: 0, concluidos: 0, imvMedio: 0, imvMax: 0, imvMin: 0 })
         setRadarData([])
         setBarData([])
@@ -200,7 +245,6 @@ export default function DashboardPage() {
         return
       }
     } else if (isEspecialista) {
-      // ESPECIALISTA: Vê APENAS módulos onde é especialista
       const { data: especializacoes } = await supabase
         .from('modulo_especialista')
         .select('modulo_id')
@@ -236,27 +280,10 @@ export default function DashboardPage() {
         setDiagnosticosRecentes([])
         return
       }
-    } else if (isCliente) {
-      // CLIENTE: Vê APENAS seu próprio diagnóstico
-      const empresaId = userData?.empresa_id
-      if (empresaId) {
-        query = query.eq('empresa_id', empresaId)
-      } else {
-        setStats({ total: 0, emAndamento: 0, concluidos: 0, imvMedio: 0, imvMax: 0, imvMin: 0 })
-        setRadarData([])
-        setBarData([])
-        setLineData([])
-        setPieData([])
-        setHeatmapData([])
-        setDiagnosticosRecentes([])
-        return
-      }
     }
 
-    // 5. Executar query
     const { data: diagData } = await query.order('created_at', { ascending: true })
 
-    // 6. Buscar módulos relacionados
     let modulosData: any[] = []
     if (diagData && diagData.length > 0) {
       const projetoIds = diagData.map(d => d.id)
@@ -268,7 +295,6 @@ export default function DashboardPage() {
       modulosData = modulos || []
     }
 
-    // 7. Processar dados
     processarDados(diagData || [], modulosData)
     setDiagnosticosRecentes(diagData?.slice(-5).reverse() || [])
   }
@@ -411,6 +437,16 @@ export default function DashboardPage() {
     return labels[status] || status
   }
 
+  const getModuloStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'PENDENTE': 'Pendente',
+      'EM_ANDAMENTO': 'Em andamento',
+      'CONCLUIDO': 'Concluído',
+      'VALIDADO': 'Validado',
+    }
+    return labels[status] || status
+  }
+
   const getPerfilLabel = (perfil: string) => {
     const labels: Record<string, string> = {
       ADMIN: 'Administrador',
@@ -422,6 +458,186 @@ export default function DashboardPage() {
     return labels[perfil] || perfil
   }
 
+  // ============================================
+  // RENDER PARA CLIENTE
+  // ============================================
+  if (isCliente) {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-[#0F5FA8]" />
+        </div>
+      )
+    }
+
+    const diagnostico = clienteDiagnostico
+    const modulos = clienteModulos
+    const imv = clienteIMV
+
+    // Dados para o gráfico de módulos
+    const modulosChartData = modulos.map((m, index) => ({
+      nome: MODULOS_LABELS[m.area] || m.area,
+      valor: m.pontuacao || 0,
+      status: m.status,
+      cor: CORES_MODULOS[index % CORES_MODULOS.length]
+    }))
+
+    const modulosConcluidos = modulos.filter(m => m.status === 'CONCLUIDO' || m.status === 'VALIDADO').length
+    const totalModulos = modulos.length
+
+    return (
+      <div className="space-y-6">
+        {/* Cabeçalho */}
+        <div>
+          <h1 className="text-2xl font-bold text-[#0A3D78] flex items-center gap-2">
+            <Eye className="w-6 h-6" />
+            Meu Diagnóstico
+          </h1>
+          <p className="text-[#5E6C84] text-sm flex items-center gap-2">
+            Acompanhe o resultado do seu diagnóstico
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              Cliente
+            </span>
+          </p>
+        </div>
+
+        {!diagnostico ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="w-12 h-12 text-[#D7DEE8] mx-auto mb-4" />
+              <p className="text-[#5E6C84]">
+                Nenhum diagnóstico iniciado para sua empresa.
+              </p>
+              <p className="text-sm text-[#5E6C84] mt-2">
+                Aguarde o início do diagnóstico pelo consultor responsável.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Resumo do Diagnóstico */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <p className="text-sm text-[#5E6C84]">Diagnóstico</p>
+                    <h2 className="text-xl font-bold text-[#0A3D78]">
+                      {diagnostico.titulo || 'Diagnóstico em andamento'}
+                    </h2>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium text-white ${getStatusColor(diagnostico.status)}`}>
+                        {getStatusLabel(diagnostico.status)}
+                      </span>
+                      <span className="text-xs text-[#5E6C84]">
+                        {diagnostico.created_at ? new Date(diagnostico.created_at).toLocaleDateString('pt-BR') : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-[#5E6C84]">IMV™</p>
+                    <p className="text-3xl font-bold text-[#0F5FA8]">{imv}</p>
+                    <p className="text-xs text-[#5E6C84]">
+                      {imv >= 800 ? 'Excelência' : imv >= 600 ? 'Gerenciado' : imv >= 400 ? 'Estruturado' : 'Básico'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Progresso dos Módulos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-[#0A3D78] flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Progresso dos Módulos
+                </CardTitle>
+                <CardDescription>
+                  {modulosConcluidos} de {totalModulos} módulos concluídos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={modulosChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#D7DEE8" />
+                      <XAxis dataKey="nome" tick={{ fill: '#5E6C84', fontSize: 10 }} />
+                      <YAxis domain={[0, 100]} tick={{ fill: '#5E6C84', fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#fff',
+                          borderRadius: '8px',
+                          border: '1px solid #D7DEE8',
+                        }}
+                        formatter={(value: any, name: any) => {
+                          if (name === 'valor') return [`${value}%`, 'Pontuação']
+                          return [value, name]
+                        }}
+                      />
+                      <Bar dataKey="valor" fill="#0F5FA8" radius={[4, 4, 0, 0]}>
+                        {modulosChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.cor} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status dos Módulos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-[#0A3D78] flex items-center gap-2">
+                  <PieChartIcon className="w-5 h-5" />
+                  Status dos Módulos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-[#F7F8FA] rounded-lg">
+                    <p className="text-2xl font-bold text-gray-500">
+                      {modulos.filter(m => m.status === 'PENDENTE').length}
+                    </p>
+                    <p className="text-xs text-[#5E6C84]">Pendente</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#F7F8FA] rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-500">
+                      {modulos.filter(m => m.status === 'EM_ANDAMENTO').length}
+                    </p>
+                    <p className="text-xs text-[#5E6C84]">Em andamento</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#F7F8FA] rounded-lg">
+                    <p className="text-2xl font-bold text-green-500">
+                      {modulos.filter(m => m.status === 'CONCLUIDO').length}
+                    </p>
+                    <p className="text-xs text-[#5E6C84]">Concluído</p>
+                  </div>
+                  <div className="text-center p-4 bg-[#F7F8FA] rounded-lg">
+                    <p className="text-2xl font-bold text-blue-500">
+                      {modulos.filter(m => m.status === 'VALIDADO').length}
+                    </p>
+                    <p className="text-xs text-[#5E6C84]">Validado</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Botão para ver detalhes */}
+            <Link href={`/diagnosticos/${diagnostico.id}`}>
+              <Button className="w-full bg-[#0F5FA8] hover:bg-[#0A3D78]">
+                Ver detalhes completos do diagnóstico
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ============================================
+  // RENDER PARA ADMIN/CONSULTOR/AUDITOR/ESPECIALISTA
+  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -430,60 +646,19 @@ export default function DashboardPage() {
     )
   }
 
-  // Cards com links (INTERATIVOS)
   const cards = [
-    { 
-      title: 'Total Diagnósticos', 
-      value: stats.total, 
-      icon: Activity, 
-      color: 'text-[#0A3D78]', 
-      bg: 'bg-[#EAF3FC]', 
-      href: isCliente ? '#' : '/diagnosticos',
-      visible: !isCliente
-    },
-    { 
-      title: 'Em Andamento', 
-      value: stats.emAndamento, 
-      icon: Clock, 
-      color: 'text-yellow-500', 
-      bg: 'bg-yellow-50', 
-      href: isCliente ? '#' : '/diagnosticos',
-      visible: !isCliente
-    },
-    { 
-      title: 'Concluídos', 
-      value: stats.concluidos, 
-      icon: CheckCircle, 
-      color: 'text-green-500', 
-      bg: 'bg-green-50', 
-      href: isCliente ? '#' : '/diagnosticos',
-      visible: !isCliente
-    },
-    { 
-      title: 'IMV™ Médio', 
-      value: stats.imvMedio, 
-      icon: TrendingUp, 
-      color: 'text-[#0F5FA8]', 
-      bg: 'bg-[#EAF3FC]', 
-      href: isCliente ? '#' : '/analises',
-      visible: !isCliente
-    },
-    { 
-      title: 'Melhor IMV™', 
-      value: stats.imvMax, 
-      icon: Award, 
-      color: 'text-green-600', 
-      bg: 'bg-green-50', 
-      href: isCliente ? '#' : '/analises',
-      visible: !isCliente
-    },
+    { title: 'Total Diagnósticos', value: stats.total, icon: Activity, color: 'text-[#0A3D78]', bg: 'bg-[#EAF3FC]', href: '/diagnosticos', visible: !isCliente },
+    { title: 'Em Andamento', value: stats.emAndamento, icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-50', href: '/diagnosticos', visible: !isCliente },
+    { title: 'Concluídos', value: stats.concluidos, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', href: '/diagnosticos', visible: !isCliente },
+    { title: 'IMV™ Médio', value: stats.imvMedio, icon: TrendingUp, color: 'text-[#0F5FA8]', bg: 'bg-[#EAF3FC]', href: '/analises', visible: isAdmin },
+    { title: 'Melhor IMV™', value: stats.imvMax, icon: Award, color: 'text-green-600', bg: 'bg-green-50', href: '/analises', visible: isAdmin },
   ]
 
   const cardsVisiveis = cards.filter(c => c.visible)
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho com Perfil */}
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0A3D78]">Dashboard</h1>
@@ -515,28 +690,12 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Cards com links (apenas para perfis que podem ver) */}
+      {/* Cards */}
       {cardsVisiveis.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {cardsVisiveis.map((card) => (
-            card.href && card.href !== '#' ? (
-              <Link key={card.title} href={card.href}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-[#5E6C84] font-medium">{card.title}</p>
-                        <p className="text-2xl font-bold text-[#1C1F26]">{card.value}</p>
-                      </div>
-                      <div className={`p-2 rounded-lg ${card.bg}`}>
-                        <card.icon className={`w-5 h-5 ${card.color}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ) : (
-              <Card key={card.title}>
+            <Link key={card.title} href={card.href}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -549,50 +708,12 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-            )
+            </Link>
           ))}
         </div>
       )}
 
-      {/* Cliente: Visão restrita */}
-      {isCliente && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[#0A3D78] flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Seu Diagnóstico
-            </CardTitle>
-            <CardDescription>
-              Você tem acesso apenas ao seu próprio diagnóstico
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {diagnosticosRecentes.length === 0 ? (
-              <p className="text-[#5E6C84] text-center py-6">
-                Nenhum diagnóstico iniciado para sua empresa.
-              </p>
-            ) : (
-              diagnosticosRecentes.map((diag) => (
-                <Link key={diag.id} href={`/diagnosticos/${diag.id}`}>
-                  <div className="flex items-center justify-between p-3 border border-[#D7DEE8] rounded-lg hover:border-[#0F5FA8] hover:bg-[#F7F8FA] transition-all cursor-pointer">
-                    <div>
-                      <p className="font-medium text-[#1C1F26] text-sm">{diag.titulo || 'Diagnóstico sem título'}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-[#5E6C84]">
-                        <span className={`px-2 py-0.5 rounded-full text-white ${getStatusColor(diag.status)}`}>
-                          {getStatusLabel(diag.status)}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#D7DEE8]" />
-                  </div>
-                </Link>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Gráficos (apenas para perfis que não são CLIENTE) */}
+      {/* Gráficos */}
       {!isCliente && (
         <Tabs defaultValue="radar" className="space-y-6">
           <TabsList className="flex flex-wrap">
@@ -603,10 +724,9 @@ export default function DashboardPage() {
             <TabsTrigger value="riscos">🔥 Riscos</TabsTrigger>
           </TabsList>
 
-          {/* RADAR */}
           <TabsContent value="radar">
             <Link href={isAdmin ? '/analises' : '#'}>
-              <Card className={`${isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}`}>
+              <Card className={isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">Radar de Maturidade</CardTitle>
                   <CardDescription>Distribuição da maturidade por área de diagnóstico</CardDescription>
@@ -633,10 +753,9 @@ export default function DashboardPage() {
             </Link>
           </TabsContent>
 
-          {/* BARRAS */}
           <TabsContent value="barras">
             <Link href={isAdmin || isConsultor ? '/diagnosticos' : '#'}>
-              <Card className={`${isAdmin || isConsultor ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}`}>
+              <Card className={isAdmin || isConsultor ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">IMV™ por Diagnóstico</CardTitle>
                   <CardDescription>Comparação da maturidade entre diagnósticos</CardDescription>
@@ -663,10 +782,9 @@ export default function DashboardPage() {
             </Link>
           </TabsContent>
 
-          {/* EVOLUÇÃO */}
           <TabsContent value="evolucao">
             <Link href={isAdmin ? '/analises' : '#'}>
-              <Card className={`${isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}`}>
+              <Card className={isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">Evolução do IMV™</CardTitle>
                   <CardDescription>Projeção da maturidade ao longo do tempo</CardDescription>
@@ -694,10 +812,9 @@ export default function DashboardPage() {
             </Link>
           </TabsContent>
 
-          {/* PIE */}
           <TabsContent value="distribuicao">
             <Link href={isAdmin || isConsultor ? '/diagnosticos' : '#'}>
-              <Card className={`${isAdmin || isConsultor ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}`}>
+              <Card className={isAdmin || isConsultor ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">Distribuição de Status</CardTitle>
                   <CardDescription>Status atual dos diagnósticos</CardDescription>
@@ -726,10 +843,9 @@ export default function DashboardPage() {
             </Link>
           </TabsContent>
 
-          {/* HEATMAP */}
           <TabsContent value="riscos">
             <Link href={isAdmin ? '/analises' : '#'}>
-              <Card className={`${isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}`}>
+              <Card className={isAdmin ? 'hover:shadow-lg transition-shadow cursor-pointer hover:border-[#0F5FA8]' : ''}>
                 <CardHeader>
                   <CardTitle className="text-[#0A3D78]">Heatmap de Riscos</CardTitle>
                   <CardDescription>Identificação de riscos por área</CardDescription>
@@ -763,11 +879,11 @@ export default function DashboardPage() {
         </Tabs>
       )}
 
-      {/* Diagnósticos Recentes - Filtrado por perfil */}
+      {/* Diagnósticos Recentes */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-[#0A3D78]">📋 Diagnósticos Recentes</CardTitle>
-          {!isCliente && (
+          {!isCliente && !isAuditor && !isEspecialista && (
             <Link href="/diagnosticos" className="text-sm text-[#0F5FA8] hover:underline font-medium flex items-center gap-1">
               Ver todos <ChevronRight className="w-4 h-4" />
             </Link>
