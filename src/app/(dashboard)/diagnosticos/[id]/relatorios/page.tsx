@@ -18,7 +18,8 @@ import {
   Clock,
   BookOpen,
   Brain,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -58,6 +59,7 @@ export default function GerenciarRelatoriosPage() {
 
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [diagnostico, setDiagnostico] = useState<any>(null)
   const [relatorios, setRelatorios] = useState<any[]>([])
   const [userData, setUserData] = useState<any>(null)
@@ -184,6 +186,45 @@ export default function GerenciarRelatoriosPage() {
       toast.error('Erro ao gerar relatório')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleDownloadPDF = async (relatorio: any) => {
+    setDownloading(true)
+
+    try {
+      const response = await fetch('/api/pdf/gerar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagnosticoId: diagnosticoId,
+          tipo: relatorio.tipo
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        toast.error('Erro ao gerar PDF: ' + (error.error || 'Erro desconhecido'))
+        setDownloading(false)
+        return
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `relatorio_${diagnosticoId}_${relatorio.tipo}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.success('PDF baixado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao baixar PDF:', error)
+      toast.error('Erro ao baixar PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -686,6 +727,18 @@ export default function GerenciarRelatoriosPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadPDF(rel)}
+                        disabled={downloading}
+                      >
+                        {downloading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
