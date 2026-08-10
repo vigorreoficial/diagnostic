@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { notificationService } from '@/lib/notifications/notification-service'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,7 +19,8 @@ import {
   Loader2,
   CheckCheck,
   Trash2,
-  Search
+  Search,
+  Archive
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -85,59 +87,13 @@ export default function NotificacoesPage() {
             .eq('auth_user_id', user.id)
             .single()
           setUserData(data)
-        }
 
-        // Buscar notificações (mock)
-        const mockNotificacoes: Notificacao[] = [
-          {
-            id: '1',
-            titulo: 'Diagnóstico concluído',
-            mensagem: 'O diagnóstico da empresa ABC Indústrias foi concluído com sucesso.',
-            tipo: 'SUCESSO',
-            status: 'NAO_LIDA',
-            link: '/diagnosticos/6e097572-bed7-4b8a-a044-69eafb580350',
-            created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString() // 5 minutos atrás
-          },
-          {
-            id: '2',
-            titulo: 'Novo diagnóstico criado',
-            mensagem: 'O diagnóstico da empresa XYZ Serviços foi criado e aguarda sua análise.',
-            tipo: 'INFO',
-            status: 'NAO_LIDA',
-            link: '/diagnosticos/novo',
-            created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutos atrás
-          },
-          {
-            id: '3',
-            titulo: 'Alerta de risco',
-            mensagem: 'Risco alto identificado no módulo Jurídico da empresa ABC Indústrias.',
-            tipo: 'PERIGO',
-            status: 'LIDA',
-            link: '/diagnosticos/6e097572-bed7-4b8a-a044-69eafb580350',
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 horas atrás
-          },
-          {
-            id: '4',
-            titulo: 'Novo relatório disponível',
-            mensagem: 'O relatório completo do diagnóstico da empresa DEF Logística está disponível.',
-            tipo: 'SUCESSO',
-            status: 'LIDA',
-            link: '/relatorios',
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() // 1 dia atrás
-          },
-          {
-            id: '5',
-            titulo: 'Lembrete de prazo',
-            mensagem: 'O prazo para conclusão do diagnóstico da empresa GHI Comércio é amanhã.',
-            tipo: 'ALERTA',
-            status: 'ARQUIVADA',
-            link: '/diagnosticos/6e097572-bed7-4b8a-a044-69eafb580350',
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() // 2 dias atrás
+          if (data?.id) {
+            const notificacoes = await notificationService.buscarNotificacoes(data.id, 100)
+            setNotificacoes(notificacoes)
+            setFilteredNotificacoes(notificacoes)
           }
-        ]
-
-        setNotificacoes(mockNotificacoes)
-        setFilteredNotificacoes(mockNotificacoes)
+        }
       } catch (error) {
         toast.error('Erro ao carregar notificações')
       } finally {
@@ -171,6 +127,7 @@ export default function NotificacoesPage() {
   }, [searchTerm, filterTipo, filterStatus, notificacoes])
 
   const handleMarkAsRead = async (id: string) => {
+    await notificationService.marcarComoLida(id)
     setNotificacoes(notificacoes.map(n =>
       n.id === id ? { ...n, status: 'LIDA' } : n
     ))
@@ -178,13 +135,17 @@ export default function NotificacoesPage() {
   }
 
   const handleMarkAllAsRead = async () => {
-    setNotificacoes(notificacoes.map(n =>
-      n.status === 'NAO_LIDA' ? { ...n, status: 'LIDA' } : n
-    ))
-    toast.success('Todas as notificações marcadas como lidas')
+    if (userData?.id) {
+      await notificationService.marcarTodasComoLidas(userData.id)
+      setNotificacoes(notificacoes.map(n =>
+        n.status === 'NAO_LIDA' ? { ...n, status: 'LIDA' } : n
+      ))
+      toast.success('Todas as notificações marcadas como lidas')
+    }
   }
 
   const handleArchive = async (id: string) => {
+    // Implementar arquivamento
     setNotificacoes(notificacoes.map(n =>
       n.id === id ? { ...n, status: 'ARQUIVADA' } : n
     ))
@@ -301,7 +262,7 @@ export default function NotificacoesPage() {
       ) : (
         <div className="space-y-3">
           {filteredNotificacoes.map((notificacao) => {
-            const Icon = TIPO_ICONS[notificacao.tipo]
+            const Icon = TIPO_ICONS[notificacao.tipo] || Info
             const isNaoLida = notificacao.status === 'NAO_LIDA'
 
             return (
@@ -364,7 +325,7 @@ export default function NotificacoesPage() {
                               onClick={() => handleArchive(notificacao.id)}
                               className="text-[#5E6C84] hover:text-[#0F5FA8]"
                             >
-                              <Clock className="w-4 h-4" />
+                              <Archive className="w-4 h-4" />
                               <span className="sr-only">Arquivar</span>
                             </Button>
                           )}
