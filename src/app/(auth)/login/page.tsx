@@ -17,12 +17,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Verificar se já está logado
+  // Verificar se já está logado ao abrir a tela
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/')
+        window.location.href = '/' // Mudei aqui também para garantir
       }
     }
     checkSession()
@@ -46,7 +46,10 @@ export default function LoginPage() {
 
       if (data?.user) {
         toast.success('Login realizado com sucesso!')
-        router.push('/')
+        
+        // 🚨 A MUDANÇA MAIS IMPORTANTE ESTÁ AQUI:
+        // Isso força o navegador a recarregar e ler o cookie novo do Supabase!
+        window.location.href = '/' 
       }
     } catch (error) {
       toast.error('Ocorreu um erro inesperado.')
