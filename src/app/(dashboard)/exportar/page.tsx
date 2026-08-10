@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Download, FileSpreadsheet, FileText, Shield, CheckCircle } from 'lucide-react'
+import { Loader2, Download, FileSpreadsheet, Shield, CheckCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 
@@ -124,30 +125,30 @@ export default function ExportarPage() {
             respostasData = data || []
           }
 
-          dados = [
-            {
-              'ID': diagData.id,
-              'Título': diagData.titulo,
-              'Empresa': diagData.empresas?.nome || '',
-              'CNPJ': diagData.empresas?.cnpj || '',
-              'Porte': diagData.empresas?.porte || '',
-              'Segmento': diagData.empresas?.segmento || '',
-              'Status': diagData.status,
-              'Responsável': diagData.usuarios?.nome || '',
-              'Data Criação': new Date(diagData.created_at).toLocaleDateString('pt-BR'),
-              'Total Módulos': modulosData?.length || 0,
-              'Total Respostas': respostasData.length,
-            }
-          ]
+          // Dados principais
+          dados.push({
+            'ID': diagData.id,
+            'Título': diagData.titulo,
+            'Empresa': diagData.empresas?.nome || '',
+            'CNPJ': diagData.empresas?.cnpj || '',
+            'Porte': diagData.empresas?.porte || '',
+            'Segmento': diagData.empresas?.segmento || '',
+            'Status': diagData.status,
+            'Responsável': diagData.usuarios?.nome || '',
+            'Data Criação': new Date(diagData.created_at).toLocaleDateString('pt-BR'),
+            'Total Módulos': modulosData?.length || 0,
+            'Total Respostas': respostasData.length,
+          })
 
           // Adicionar detalhes das respostas
           respostasData.forEach((r, index) => {
+            const perguntaKey = 'Pergunta ' + (index + 1)
             dados.push({
-              `Pergunta ${index + 1}`: r.perguntas?.pergunta || '',
-              'Módulo': r.perguntas?.modulo_area || '',
+              [perguntaKey]: r.perguntas?.pergunta || '',
+              'Modulo': r.perguntas?.modulo_area || '',
               'Tipo': r.perguntas?.tipo || '',
               'Resposta': typeof r.resposta === 'object' ? JSON.stringify(r.resposta) : r.resposta,
-              'Observação': r.observacao || '',
+              'Observacao': r.observacao || '',
             })
           })
         }
@@ -166,18 +167,18 @@ export default function ExportarPage() {
 
       // Gerar arquivo
       if (formato === 'excel') {
-        const fileName = `diagnosticos_${new Date().toISOString().slice(0, 10)}.xlsx`
+        const fileName = 'diagnosticos_' + new Date().toISOString().slice(0, 10) + '.xlsx'
         XLSX.writeFile(wb, fileName)
-        toast.success(`Arquivo ${fileName} baixado com sucesso!`)
+        toast.success('Arquivo ' + fileName + ' baixado com sucesso!')
       } else {
-        const fileName = `diagnosticos_${new Date().toISOString().slice(0, 10)}.csv`
+        const fileName = 'diagnosticos_' + new Date().toISOString().slice(0, 10) + '.csv'
         const csv = XLSX.utils.sheet_to_csv(ws)
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = fileName
         link.click()
-        toast.success(`Arquivo ${fileName} baixado com sucesso!`)
+        toast.success('Arquivo ' + fileName + ' baixado com sucesso!')
       }
     } catch (error) {
       toast.error('Erro ao exportar dados')
@@ -236,7 +237,7 @@ export default function ExportarPage() {
                   <SelectValue placeholder="Selecione um diagnóstico" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">📊 Todos os diagnósticos</SelectItem>
+                  <SelectItem value="todos">Todos os diagnósticos</SelectItem>
                   {diagnosticos.map((diag) => (
                     <SelectItem key={diag.id} value={diag.id}>
                       {diag.titulo} - {diag.empresas?.nome || ''}
@@ -253,8 +254,8 @@ export default function ExportarPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="excel">📊 Excel (.xlsx)</SelectItem>
-                  <SelectItem value="csv">📄 CSV (.csv)</SelectItem>
+                  <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="csv">CSV (.csv)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -293,7 +294,7 @@ export default function ExportarPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#0A3D78]">ℹ️ Informações</CardTitle>
+          <CardTitle className="text-[#0A3D78]">Informações</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
