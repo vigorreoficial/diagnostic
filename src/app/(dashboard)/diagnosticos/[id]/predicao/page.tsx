@@ -17,6 +17,24 @@ interface Projecao {
   cenario: Cenario
 }
 
+// Mapeamento de módulos
+const MODULOS_LABELS: Record<string, string> = {
+  'ESTRATEGIA': 'Estratégia e Governança',
+  'RH': 'Recursos Humanos',
+  'DP': 'Departamento Pessoal',
+  'JURIDICO': 'Jurídico e Compliance',
+  'SST': 'Saúde e Segurança do Trabalho',
+  'NUTRICAO': 'Nutrição Organizacional',
+  'FINANCEIRO': 'Financeiro',
+  'COMERCIAL': 'Comercial e Marketing',
+  'QUALIDADE': 'Qualidade',
+  'MELHORIA_CONTINUA': 'Melhoria Contínua',
+  'OPERACOES': 'Operações e Logística',
+  'COMPRAS': 'Compras e Suprimentos',
+  'TI': 'Tecnologia da Informação',
+  'AGRO': 'Agronegócio',
+}
+
 export default function PredicaoPage() {
   const params = useParams()
   const router = useRouter()
@@ -55,7 +73,7 @@ export default function PredicaoPage() {
         const modulosList = modulosData || []
         setModulos(modulosList)
 
-        // Calcular IMV atual (média das pontuações)
+        // Calcular IMV atual
         let imv = 0
         if (modulosList.length > 0) {
           const total = modulosList.reduce((acc, m) => acc + (m.pontuacao || 0), 0)
@@ -76,7 +94,7 @@ export default function PredicaoPage() {
         const impacto = acoesData?.reduce((acc, a) => acc + (a.impacto_imv || 0), 0) || 0
         setImpactoAcoes(impacto)
 
-        // Recomendações baseadas no cenário
+        // Recomendações
         gerarRecomendacoes(imv, 'REALISTA')
 
       } catch (error) {
