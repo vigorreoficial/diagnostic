@@ -105,7 +105,6 @@ export default function ConfiguracoesPage() {
     setTesteResultado(null)
 
     try {
-      // Simular teste de conexão com a IA
       await new Promise(resolve => setTimeout(resolve, 2000))
       setTesteResultado('sucesso')
       toast.success('Conexão com a IA testada com sucesso!')
@@ -143,7 +142,6 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div>
         <h1 className="text-2xl font-bold text-[#0A3D78] flex items-center gap-2">
           <Cpu className="w-6 h-6" />
@@ -155,7 +153,6 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Configurações */}
         <Card>
           <CardHeader>
             <CardTitle className="text-[#0A3D78] flex items-center gap-2">
@@ -279,7 +276,6 @@ export default function ConfiguracoesPage() {
           </CardContent>
         </Card>
 
-        {/* Informações */}
         <Card>
           <CardHeader>
             <CardTitle className="text-[#0A3D78]">ℹ️ Sobre a Integração</CardTitle>
