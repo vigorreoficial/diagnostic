@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { knowledgeClient } from './knowledge-client'
+import { chamarIA } from './ai-client'
 
 export interface CTIAnalysisResult {
   parecer: string
@@ -52,23 +53,30 @@ export class CTIWithKnowledge {
     const tags = this.extrairTags(perguntas || [])
     const conhecimento = await knowledgeClient.buscarPorModulo(modulo.area, tags)
 
-    // 4. Registrar consultas no log
-    for (const item of conhecimento) {
-      await knowledgeClient.registrarConsulta(
-        item.id,
-        `Análise do módulo ${modulo.area}`,
-        modulo.area,
-        usuarioId
-      )
-    }
+    // 4. Buscar configuração da IA
+    const { data: configData } = await this.supabase
+      .from('configuracoes')
+      .select('*')
+      .eq('chave', 'ia_config')
+      .single()
 
-    // 5. Gerar análise inteligente comparando respostas com conhecimento
-    const analise = await this.gerarAnaliseInteligente(
-      modulo,
-      respostas,
-      perguntas || [],
-      conhecimento
-    )
+    const config = configData?.valor || { provider: 'gemini', apiKey: '', model: 'gemini-pro' }
+
+    // 5. Gerar análise usando IA
+    let analise: CTIAnalysisResult
+
+    if (config.apiKey) {
+      try {
+        const prompt = this.construirPrompt(modulo, respostas, perguntas || [], conhecimento)
+        const respostaIA = await chamarIA(prompt, config.provider, config.apiKey, config.model)
+        analise = this.extrairAnaliseDaResposta(respostaIA, modulo, respostas, perguntas || [], conhecimento)
+      } catch (error) {
+        console.error('Erro ao chamar IA:', error)
+        analise = await this.gerarAnaliseBaseadaEmRegras(modulo, respostas, perguntas || [], conhecimento)
+      }
+    } else {
+      analise = await this.gerarAnaliseBaseadaEmRegras(modulo, respostas, perguntas || [], conhecimento)
+    }
 
     // 6. Salvar análise no banco
     await this.salvarAnalise(moduloId, analise, usuarioId)
@@ -101,166 +109,267 @@ export class CTIWithKnowledge {
   }
 
   /**
-   * Gera análise inteligente comparando respostas com conhecimento
+   * Constrói o prompt para a IA
    */
-  private async gerarAnaliseInteligente(
+  private construirPrompt(
     modulo: any,
     respostas: any[],
     perguntas: any[],
     conhecimento: any[]
-  ): Promise<CTIAnalysisResult> {
-    // ============================================
-    // 1. ANALISAR CADA PERGUNTA COM BASE NO CONHECIMENTO
-    // ============================================
-    const detalhesRequisitos: any[] = []
-    let conformidadeTotal = 0
-    let totalRequisitos = 0
-
-    for (const pergunta of perguntas || []) {
-      const resposta = respostas.find(r => r.pergunta_id === pergunta.id)
-      const conhecimentoRelevante = conhecimento.filter(k =>
-        k.tags.some((tag: string) => pergunta.pergunta.includes(tag)) ||
-        k.modulo_area === modulo.area
-      )
-
-      // Determinar se a resposta está conforme
-      let conforme = false
-      let justificativa = ''
-      let requisito = pergunta.pergunta
-
-      if (resposta) {
-        totalRequisitos++
-
-        // Para perguntas Sim/Não
-        if (pergunta.tipo === 'SIM_NAO') {
-          conforme = resposta.resposta === true
-          if (conhecimentoRelevante.length > 0) {
-            const fonte = conhecimentoRelevante[0]
-            justificativa = conforme
-              ? `✅ Conforme. A resposta está alinhada com ${fonte.titulo} (v${fonte.versao})`
-              : `❌ Não conforme. ${fonte.titulo} (v${fonte.versao}) exige que a empresa atenda a este requisito.`
-          } else {
-            justificativa = conforme
-              ? '✅ Conforme com as boas práticas'
-              : '❌ Não conforme. Recomenda-se consultar o Knowledge Hub™ para mais informações.'
-          }
-        }
-        // Para perguntas de escala
-        else if (pergunta.tipo === 'ESCALA_1_5') {
-          const valor = resposta.resposta || 0
-          conforme = valor >= 4
-          if (conhecimentoRelevante.length > 0) {
-            const fonte = conhecimentoRelevante[0]
-            justificativa = conforme
-              ? `✅ Conforme (nota ${valor}/5). ${fonte.titulo} recomenda boas práticas.`
-              : `⚠️ Atenção (nota ${valor}/5). ${fonte.titulo} indica que a empresa deve melhorar neste aspecto.`
-          } else {
-            justificativa = conforme
-              ? `✅ Conforme (nota ${valor}/5)`
-              : `⚠️ Atenção (nota ${valor}/5). Recomenda-se melhoria.`
-          }
-        }
-        // Para perguntas de texto
-        else if (pergunta.tipo === 'TEXTO') {
-          const texto = resposta.resposta || ''
-          conforme = texto.length > 10
-          justificativa = conforme
-            ? '✅ Resposta detalhada fornecida'
-            : '⚠️ Resposta muito curta. Recomenda-se detalhar mais.'
-        }
-        // Para múltipla escolha
-        else if (pergunta.tipo === 'MULTIPLA_ESCOLHA') {
-          const opcoes = pergunta.opcoes || []
-          const primeiraOpcao = opcoes[0] || ''
-          conforme = resposta.resposta === primeiraOpcao
-          justificativa = conforme
-            ? '✅ Selecionou a melhor opção'
-            : '⚠️ A empresa pode considerar a opção recomendada.'
-        }
-
-        if (conforme) conformidadeTotal++
+  ): string {
+    // Mapear respostas para um formato legível
+    const respostasTexto = perguntas.map((p) => {
+      const r = respostas.find(r => r.pergunta_id === p.id)
+      const valor = r?.resposta
+      let textoResposta = 'Não respondido'
+      
+      if (p.tipo === 'SIM_NAO') {
+        textoResposta = valor === true ? '✅ Sim' : '❌ Não'
+      } else if (p.tipo === 'ESCALA_1_5') {
+        textoResposta = `Nota ${valor || 0}/5`
+      } else if (p.tipo === 'TEXTO') {
+        textoResposta = valor || 'Não preenchido'
+      } else if (p.tipo === 'MULTIPLA_ESCOLHA') {
+        textoResposta = valor || 'Não selecionado'
       }
+      
+      return `- ${p.pergunta}: ${textoResposta}`
+    }).join('\n')
 
-      detalhesRequisitos.push({
-        requisito,
-        conforme,
-        justificativa,
-        conhecimento_utilizado: conhecimentoRelevante.map(k => k.titulo).join(', ')
-      })
+    // Extrair conhecimento relevante
+    const conhecimentoTexto = conhecimento.map(k => 
+      `📖 ${k.titulo} (${k.fonte}, v${k.versao}): ${k.conteudo?.substring(0, 500)}...`
+    ).join('\n')
+
+    const areaLabel = this.getAreaLabel(modulo.area)
+
+    return `
+Você é um especialista em ${areaLabel} e Gestão Organizacional.
+
+**OBJETIVO:** Analisar as respostas do questionário e gerar um parecer técnico detalhado.
+
+**MÓDULO:** ${modulo.area} - ${areaLabel}
+
+**RESPOSTAS DO QUESTIONÁRIO:**
+${respostasTexto}
+
+**CONHECIMENTO DE REFERÊNCIA (Knowledge Hub™):**
+${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
+
+**INSTRUÇÕES PARA A RESPOSTA:**
+
+1. **Análise Geral:** Comece com uma visão geral do módulo, destacando os pontos fortes e fracos.
+
+2. **Por Resposta:** Analise cada resposta individualmente, explicando o que significa para a empresa.
+
+3. **Recomendações:** Liste ações práticas e priorizadas.
+
+4. **Formato:** Use a estrutura abaixo EXATAMENTE:
+
+📊 ANÁLISE DO MÓDULO ${modulo.area}
+
+📌 VISÃO GERAL
+[Parágrafo com análise geral, destacando pontos fortes e fracos]
+
+📋 PONTOS FORTES
+✅ [Item identificado como positivo]
+✅ [Item identificado como positivo]
+
+⚠️ PONTOS DE ATENÇÃO
+❌ [Item que precisa de melhoria]
+❌ [Item que precisa de melhoria]
+
+💡 RECOMENDAÇÕES (PRIORIZADAS)
+1. [Ação 1] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
+2. [Ação 2] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
+3. [Ação 3] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
+
+📊 CONFORMIDADE
+- Total de requisitos: [X]
+- Atendidos: [Y]
+- Percentual: [Z]%
+
+5. **Seja específico:** Relacione diretamente com as respostas dadas. Não use frases genéricas.
+
+6. **Não invente:** Se não tiver informação suficiente, diga "Não foi possível avaliar".
+
+7. **Seja prático:** As recomendações devem ser acionáveis.
+
+**SUA RESPOSTA DEVE SER APENAS O PARECER, SEM INTRODUÇÕES ADICIONAIS.**
+`
+  }
+
+  /**
+   * Extrai análise da resposta da IA
+   */
+  private extrairAnaliseDaResposta(
+    respostaIA: string,
+    modulo: any,
+    respostas: any[],
+    perguntas: any[],
+    conhecimento: any[]
+  ): CTIAnalysisResult {
+    // Extrair informações da resposta
+    const parecer = respostaIA || 'Análise não disponível'
+    
+    // Tentar extrair recomendações da resposta
+    let recomendacao = 'Consulte o Knowledge Hub™ para mais informações.'
+    const recomendacaoMatch = respostaIA.match(/💡 RECOMENDAÇÕES[^]*?(?=📊|$)/)
+    if (recomendacaoMatch) {
+      recomendacao = recomendacaoMatch[0]
     }
 
-    // ============================================
-    // 2. CALCULAR PERCENTUAL DE CONFORMIDADE
-    // ============================================
-    const percentual = totalRequisitos > 0
-      ? Math.round((conformidadeTotal / totalRequisitos) * 100)
-      : 0
+    // Calcular conformidade
+    let conformes = 0
+    let total = 0
+    
+    for (const p of perguntas) {
+      const r = respostas.find(r => r.pergunta_id === p.id)
+      if (r) {
+        total++
+        if (p.tipo === 'SIM_NAO' && r.resposta === true) conformes++
+        else if (p.tipo === 'ESCALA_1_5' && r.resposta >= 4) conformes++
+        else if (p.tipo === 'TEXTO' && r.resposta?.length > 10) conformes++
+      }
+    }
 
-    // ============================================
-    // 3. DETERMINAR PRIORIDADE
-    // ============================================
+    const percentual = total > 0 ? Math.round((conformes / total) * 100) : 0
+
+    // Determinar prioridade
     let prioridade: 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA' = 'MEDIA'
     if (percentual < 30) prioridade = 'CRITICA'
     else if (percentual < 50) prioridade = 'ALTA'
     else if (percentual < 70) prioridade = 'MEDIA'
     else prioridade = 'BAIXA'
 
-    // ============================================
-    // 4. GERAR PARECER DETALHADO
-    // ============================================
-    let parecer = ''
-    let recomendacao = ''
+    return {
+      parecer,
+      recomendacao,
+      prioridade,
+      confianca: Math.min(0.95, 0.5 + (percentual / 100) * 0.4),
+      fontes_utilizadas: (conhecimento || []).map(k => ({
+        id: k.id,
+        titulo: k.titulo,
+        fonte: k.fonte,
+        versao: k.versao
+      })),
+      detalhes_requisitos: []
+    }
+  }
 
-    const fontesUsadas = conhecimento.map(k => k.fonte).join(', ')
+  /**
+   * Retorna o label da área
+   */
+  private getAreaLabel(area: string): string {
+    const labels: Record<string, string> = {
+      'ESTRATEGIA': 'Estratégia e Governança',
+      'RH': 'Recursos Humanos',
+      'DP': 'Departamento Pessoal',
+      'JURIDICO': 'Jurídico e Compliance',
+      'SST': 'Saúde e Segurança do Trabalho',
+      'NUTRICAO': 'Nutrição Organizacional',
+      'FINANCEIRO': 'Financeiro',
+      'COMERCIAL': 'Comercial e Marketing',
+      'QUALIDADE': 'Qualidade',
+      'MELHORIA_CONTINUA': 'Melhoria Contínua',
+      'OPERACOES': 'Operações e Logística',
+      'COMPRAS': 'Compras e Suprimentos',
+      'TI': 'Tecnologia da Informação',
+      'AGRO': 'Agronegócio'
+    }
+    return labels[area] || area
+  }
 
-    if (conhecimento.length > 0) {
-      parecer = `🔍 **Análise do Módulo ${modulo.area}**\n\n`
-      parecer += `Com base nas respostas fornecidas e na consulta ao Knowledge Hub™ (${fontesUsadas}), `
-      parecer += `a empresa apresenta **${percentual}% de conformidade** com os requisitos avaliados.\n\n`
-      parecer += `**Resumo:**\n`
-      parecer += `• ${conformidadeTotal} de ${totalRequisitos} requisitos atendidos\n`
-      parecer += `• Nível de maturidade: ${this.getNivelMaturidade(percentual)}\n\n`
+  /**
+   * Gera análise baseada em regras (fallback)
+   */
+  private async gerarAnaliseBaseadaEmRegras(
+    modulo: any,
+    respostas: any[],
+    perguntas: any[],
+    conhecimento: any[]
+  ): Promise<CTIAnalysisResult> {
+    let conformes = 0
+    let total = 0
+    const detalhes: any[] = []
 
-      // Adicionar itens não conformes
-      const naoConformes = detalhesRequisitos.filter(r => !r.conforme)
-      if (naoConformes.length > 0) {
-        parecer += `**⚠️ Pontos de atenção:**\n`
-        naoConformes.slice(0, 3).forEach(r => {
-          parecer += `• ${r.requisito}\n`
-        })
-        if (naoConformes.length > 3) {
-          parecer += `• +${naoConformes.length - 3} outros itens\n`
+    for (const p of perguntas) {
+      const r = respostas.find(r => r.pergunta_id === p.id)
+      if (r) {
+        total++
+        let conforme = false
+        let justificativa = ''
+
+        if (p.tipo === 'SIM_NAO') {
+          conforme = r.resposta === true
+          justificativa = conforme 
+            ? '✅ Atende ao requisito' 
+            : '❌ Não atende ao requisito'
+        } else if (p.tipo === 'ESCALA_1_5') {
+          conforme = r.resposta >= 4
+          justificativa = conforme 
+            ? `✅ Atende (nota ${r.resposta}/5)` 
+            : `⚠️ Precisa melhorar (nota ${r.resposta}/5)`
+        } else if (p.tipo === 'TEXTO') {
+          conforme = r.resposta?.length > 10
+          justificativa = conforme 
+            ? '✅ Resposta detalhada' 
+            : '⚠️ Resposta muito curta'
         }
-      }
 
-      recomendacao = `**Recomendações:**\n\n`
-      if (percentual < 50) {
-        recomendacao += `🔴 **Prioridade Alta:** A empresa precisa implementar ações corretivas imediatas nos seguintes aspectos:\n`
-        naoConformes.slice(0, 3).forEach(r => {
-          recomendacao += `• ${r.requisito} - ${r.justificativa}\n`
+        if (conforme) conformes++
+        detalhes.push({
+          requisito: p.pergunta,
+          conforme,
+          justificativa
         })
-        recomendacao += `\n📋 Consulte o Knowledge Hub™ para obter as referências completas.`
-      } else if (percentual < 70) {
-        recomendacao += `🟡 **Prioridade Média:** A empresa possui conformidade parcial. Recomenda-se:\n`
-        recomendacao += `• Fortalecer os pontos com baixa conformidade\n`
-        recomendacao += `• Manter as boas práticas já implementadas\n`
-        recomendacao += `• Monitorar indicadores para evolução contínua`
-      } else {
-        recomendacao += `🟢 **Boa prática:** A empresa apresenta alta conformidade. Recomenda-se:\n`
-        recomendacao += `• Manter o ritmo de melhoria contínua\n`
-        recomendacao += `• Compartilhar as boas práticas com outras áreas\n`
-        recomendacao += `• Buscar certificações para consolidar o nível de maturidade`
       }
-    } else {
-      parecer = `📋 **Análise do Módulo ${modulo.area}**\n\n`
-      parecer += `A empresa apresenta **${percentual}% de conformidade** com os requisitos avaliados.\n\n`
-      parecer += `**Resumo:**\n`
-      parecer += `• ${conformidadeTotal} de ${totalRequisitos} requisitos atendidos\n`
-      parecer += `• Nível de maturidade: ${this.getNivelMaturidade(percentual)}\n\n`
-      parecer += `💡 Consulte o Knowledge Hub™ para mais referências sobre este módulo.`
+    }
 
-      recomendacao = `**Recomendações:**\n\n`
-      recomendacao += `📚 Acesse o Knowledge Hub™ para obter informações detalhadas sobre leis, normas e boas práticas relacionadas a este módulo.`
+    const percentual = total > 0 ? Math.round((conformes / total) * 100) : 0
+
+    let prioridade: 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA' = 'MEDIA'
+    if (percentual < 30) prioridade = 'CRITICA'
+    else if (percentual < 50) prioridade = 'ALTA'
+    else if (percentual < 70) prioridade = 'MEDIA'
+    else prioridade = 'BAIXA'
+
+    const areaLabel = this.getAreaLabel(modulo.area)
+
+    let parecer = `📊 **Análise do Módulo ${areaLabel}**\n\n`
+    parecer += `A empresa apresenta **${percentual}% de conformidade** com os requisitos avaliados.\n\n`
+    parecer += `**Resumo:**\n`
+    parecer += `• ${conformes} de ${total} requisitos atendidos\n`
+    parecer += `• Nível de maturidade: ${this.obterNivelMaturidade(percentual)}\n\n`
+
+    const naoConformes = detalhes.filter(d => !d.conforme)
+    if (naoConformes.length > 0) {
+      parecer += `**⚠️ Pontos de atenção:**\n`
+      naoConformes.slice(0, 3).forEach(d => {
+        parecer += `• ${d.requisito}\n`
+      })
+      if (naoConformes.length > 3) {
+        parecer += `• +${naoConformes.length - 3} outros itens\n`
+      }
+    }
+
+    let recomendacao = `**Recomendações:**\n\n`
+    if (percentual < 50) {
+      recomendacao += `🔴 **Prioridade Alta:** A empresa precisa implementar ações corretivas imediatas nos seguintes aspectos:\n`
+      naoConformes.slice(0, 3).forEach(d => {
+        recomendacao += `• ${d.requisito} - ${d.justificativa}\n`
+      })
+      recomendacao += `\n📋 Consulte o Knowledge Hub™ para obter as referências completas.`
+    } else if (percentual < 70) {
+      recomendacao += `🟡 **Prioridade Média:** A empresa possui conformidade parcial. Recomenda-se:\n`
+      recomendacao += `• Fortalecer os pontos com baixa conformidade\n`
+      recomendacao += `• Manter as boas práticas já implementadas\n`
+      recomendacao += `• Monitorar indicadores para evolução contínua`
+    } else {
+      recomendacao += `🟢 **Boa prática:** A empresa apresenta alta conformidade. Recomenda-se:\n`
+      recomendacao += `• Manter o ritmo de melhoria contínua\n`
+      recomendacao += `• Compartilhar as boas práticas com outras áreas\n`
+      recomendacao += `• Buscar certificações para consolidar o nível de maturidade`
     }
 
     return {
@@ -274,14 +383,14 @@ export class CTIWithKnowledge {
         fonte: k.fonte,
         versao: k.versao
       })),
-      detalhes_requisitos: detalhesRequisitos
+      detalhes_requisitos: detalhes
     }
   }
 
   /**
-   * Retorna o nível de maturidade baseado no percentual
+   * Retorna o nível de maturidade
    */
-  private getNivelMaturidade(percentual: number): string {
+  private obterNivelMaturidade(percentual: number): string {
     if (percentual >= 90) return '🏆 Excelência'
     if (percentual >= 75) return '✅ Estratégico'
     if (percentual >= 60) return '📊 Gerenciado'
