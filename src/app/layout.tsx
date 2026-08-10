@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
-import { Toaster } from 'sonner'
+import { Inter } from 'next/font/google'
 import './globals.css'
+import { Toaster } from 'sonner'
+import { ThemeProvider } from '@/providers/ThemeProvider'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Vigorre Diagnostics™',
@@ -9,14 +13,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="pt-BR">
-      <body>
-        {children}
-        <Toaster richColors position="top-right" />
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider>
+          {children}
+          <Toaster position="top-right" richColors />
+        </ThemeProvider>
       </body>
     </html>
   )
