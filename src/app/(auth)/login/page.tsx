@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,23 +9,11 @@ import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  // Verificar se já está logado ao abrir a tela
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        window.location.href = '/' // Mudei aqui também para garantir
-      }
-    }
-    checkSession()
-  }, [router, supabase])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,9 +33,7 @@ export default function LoginPage() {
 
       if (data?.user) {
         toast.success('Login realizado com sucesso!')
-        
-        // 🚨 A MUDANÇA MAIS IMPORTANTE ESTÁ AQUI:
-        // Isso força o navegador a recarregar e ler o cookie novo do Supabase!
+        // Força o recarregamento da página para atualizar os cookies no servidor
         window.location.href = '/' 
       }
     } catch (error) {
