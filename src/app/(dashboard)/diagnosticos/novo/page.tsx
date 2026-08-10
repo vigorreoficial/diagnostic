@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,8 @@ const MODULOS = [
   { id: 'AGRO', label: 'Agronegócio', peso: 5 },
 ]
 
-export default function NovoDiagnosticoPage() {
+// Componente principal que usa useSearchParams
+function NovoDiagnosticoForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -63,7 +64,7 @@ export default function NovoDiagnosticoPage() {
           setUserData(data)
         }
 
-        // Buscar empresas (as políticas RLS já filtram)
+        // Buscar empresas
         const { data, error } = await supabase
           .from('empresas')
           .select('id, nome, cnpj')
@@ -104,7 +105,6 @@ export default function NovoDiagnosticoPage() {
     setLoading(true)
 
     try {
-      // Validar campos obrigatórios
       if (!formData.titulo) {
         toast.error('Título é obrigatório')
         setLoading(false)
@@ -326,5 +326,18 @@ export default function NovoDiagnosticoPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Componente principal com Suspense
+export default function NovoDiagnosticoPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0F5FA8]" />
+      </div>
+    }>
+      <NovoDiagnosticoForm />
+    </Suspense>
   )
 }
