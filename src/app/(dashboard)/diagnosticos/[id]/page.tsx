@@ -16,7 +16,10 @@ import {
   ClipboardList,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Award,
+  UserCheck
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -46,6 +49,8 @@ export default function DetalhesDiagnosticoPage() {
   const [diagnostico, setDiagnostico] = useState<any>(null)
   const [modulos, setModulos] = useState<any[]>([])
   const [userData, setUserData] = useState<any>(null)
+  const [auditoresCount, setAuditoresCount] = useState(0)
+  const [especialistasCount, setEspecialistasCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,6 +97,25 @@ export default function DetalhesDiagnosticoPage() {
           .order('area', { ascending: true })
 
         setModulos(modulosData || [])
+
+        // Contar auditores vinculados
+        const { count: auditoresCount } = await supabase
+          .from('modulo_auditor')
+          .select('*', { count: 'exact', head: true })
+          .eq('projeto_id', id)
+
+        setAuditoresCount(auditoresCount || 0)
+
+        // Contar especialistas vinculados
+        const moduloIds = modulosData?.map(m => m.id) || []
+        if (moduloIds.length > 0) {
+          const { count: especialistasCount } = await supabase
+            .from('modulo_especialista')
+            .select('*', { count: 'exact', head: true })
+            .in('modulo_id', moduloIds)
+
+          setEspecialistasCount(especialistasCount || 0)
+        }
       } catch (error) {
         toast.error('Erro ao carregar dados')
       } finally {
@@ -257,6 +281,33 @@ export default function DetalhesDiagnosticoPage() {
                 {getStatusLabel(diagnostico.status)}
               </span>
             </div>
+
+            {/* ⬇️⬇️⬇️ NOVOS LINKS AQUI ⬇️⬇️⬇️ */}
+            {isAdmin && (
+              <>
+                <div className="pt-2 mt-2 border-t border-[#D7DEE8]" />
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="w-4 h-4 text-[#5E6C84]" />
+                  <span className="text-[#5E6C84]">Auditores:</span>
+                  <Link 
+                    href={`/diagnosticos/${diagnostico.id}/auditores`} 
+                    className="text-[#0F5FA8] hover:underline font-medium"
+                  >
+                    Gerenciar ({auditoresCount})
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Award className="w-4 h-4 text-[#5E6C84]" />
+                  <span className="text-[#5E6C84]">Especialistas:</span>
+                  <Link 
+                    href={`/diagnosticos/${diagnostico.id}/especialistas`} 
+                    className="text-[#0F5FA8] hover:underline font-medium"
+                  >
+                    Gerenciar ({especialistasCount})
+                  </Link>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
