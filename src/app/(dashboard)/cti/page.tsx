@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2,
@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -37,6 +38,24 @@ const ESPECIALISTAS = [
   { id: 'OPERACOES', nome: 'Especialista em Operações', area: 'Operações', icone: Brain },
   { id: 'TI', nome: 'Especialista em TI', area: 'Tecnologia', icone: Brain },
 ]
+
+// Mapeamento de módulos
+const MODULOS_LABELS: Record<string, string> = {
+  'ESTRATEGIA': 'Estratégia',
+  'RH': 'RH',
+  'DP': 'DP',
+  'JURIDICO': 'Jurídico',
+  'SST': 'SST',
+  'NUTRICAO': 'Nutrição',
+  'FINANCEIRO': 'Financeiro',
+  'COMERCIAL': 'Comercial',
+  'QUALIDADE': 'Qualidade',
+  'MELHORIA_CONTINUA': 'Melhoria Contínua',
+  'OPERACOES': 'Operações',
+  'COMPRAS': 'Compras',
+  'TI': 'TI',
+  'AGRO': 'Agronegócio',
+}
 
 interface AnaliseCTI {
   id: string
@@ -74,7 +93,6 @@ export default function CTIPage() {
           setUserData(data)
         }
 
-        // Buscar diagnósticos disponíveis
         const { data: diagData } = await supabase
           .from('projetos_diagnostico')
           .select('id, titulo, empresas(nome)')
@@ -85,7 +103,6 @@ export default function CTIPage() {
           setDiagnosticoSelecionado(diagData[0].id)
         }
 
-        // Buscar análises existentes
         const { data: analisesData } = await supabase
           .from('analises_cti')
           .select('*')
@@ -110,7 +127,6 @@ export default function CTIPage() {
     setGerando(true)
 
     try {
-      // Simular chamada à IA para gerar análise
       await new Promise(resolve => setTimeout(resolve, 3000))
 
       const novaAnalise: AnaliseCTI = {
@@ -175,7 +191,7 @@ export default function CTIPage() {
             CTI™ - Corpo Técnico Inteligente
           </h1>
           <p className="text-[#5E6C84] text-sm">
-            Análises e pareceres dos especialistas virtuais
+            Análises e pareceres dos especialistas virtuais com Knowledge Hub™
           </p>
         </div>
         <Button
@@ -334,7 +350,7 @@ export default function CTIPage() {
                               {analise.especialista}
                             </h3>
                             <span className="text-xs text-[#5E6C84]">
-                              • {analise.modulo_area}
+                              • {MODULOS_LABELS[analise.modulo_area] || analise.modulo_area}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrioridadeColor(analise.prioridade)}`}>
                               {getPrioridadeLabel(analise.prioridade)}
@@ -373,9 +389,13 @@ export default function CTIPage() {
               <CardTitle className="text-[#0A3D78] flex items-center gap-2">
                 <Zap className="w-5 h-5" />
                 Motor de Consenso
+                <Badge variant="outline" className="ml-2">
+                  <BookOpen className="w-3 h-3 mr-1" />
+                  Knowledge Hub™
+                </Badge>
               </CardTitle>
               <p className="text-sm text-[#5E6C84]">
-                Concilia todas as análises em um resultado único
+                Concilia todas as análises em um resultado único com base no Knowledge Hub™
               </p>
             </CardHeader>
             <CardContent>
@@ -407,12 +427,18 @@ export default function CTIPage() {
                   <div className="p-4 bg-[#EAF3FC] rounded-lg">
                     <p className="text-sm font-medium text-[#0A3D78]">📋 Parecer Consolidado</p>
                     <p className="text-sm text-[#1C1F26] mt-2">
-                      Com base nas {analises.length} análises realizadas, a organização apresenta um nível de maturidade médio, com oportunidades de melhoria nas áreas de RH e Qualidade. Recomenda-se priorizar ações de curto prazo para fortalecer a cultura organizacional e os processos de gestão.
+                      Com base nas {analises.length} análises realizadas e nas fontes do Knowledge Hub™,
+                      a organização apresenta um nível de maturidade médio, com oportunidades de melhoria nas áreas de RH e Qualidade.
+                      Recomenda-se priorizar ações de curto prazo para fortalecer a cultura organizacional e os processos de gestão.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       <Badge className="bg-green-100 text-green-700">3 recomendações</Badge>
                       <Badge className="bg-yellow-100 text-yellow-700">5 ações</Badge>
                       <Badge className="bg-blue-100 text-blue-700">IMV™ potencial +15%</Badge>
+                      <Badge className="bg-indigo-100 text-indigo-700">
+                        <BookOpen className="w-3 h-3 mr-1" />
+                        12 fontes consultadas
+                      </Badge>
                     </div>
                   </div>
                 </div>
