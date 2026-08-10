@@ -20,7 +20,10 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
-  Clock
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Copy
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -69,6 +72,7 @@ export default function KnowledgeDetailPage() {
   const [item, setItem] = useState<any>(null)
   const [userData, setUserData] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,6 +136,15 @@ export default function KnowledgeDetailPage() {
     }
   }
 
+  const handleCopy = () => {
+    if (item?.conteudo) {
+      navigator.clipboard.writeText(item.conteudo)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+      toast.success('Conteúdo copiado para a área de transferência!')
+    }
+  }
+
   const getCategoriaIcon = (categoria: Categoria) => {
     const icons = {
       LEGISLACAO: <FileText className="w-5 h-5" />,
@@ -144,11 +157,22 @@ export default function KnowledgeDetailPage() {
   }
 
   const formatarData = (data: string) => {
+    if (!data) return '—'
     return new Date(data).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     })
+  }
+
+  const getModuloBadge = (moduloArea: string | null) => {
+    if (!moduloArea) return null
+    const label = MODULOS[moduloArea] || moduloArea
+    return (
+      <Badge variant="outline" className="text-xs bg-[#EAF3FC] text-[#0F5FA8] border-[#0F5FA8]">
+        {label}
+      </Badge>
+    )
   }
 
   if (loading) {
@@ -162,6 +186,7 @@ export default function KnowledgeDetailPage() {
   if (!item) {
     return (
       <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <p className="text-[#5E6C84]">Conteúdo não encontrado</p>
         <Button className="mt-4" onClick={() => router.push('/knowledge-hub')}>
           Voltar para Knowledge Hub™
@@ -185,15 +210,16 @@ export default function KnowledgeDetailPage() {
             Voltar
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {getCategoriaIcon(item.categoria)}
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_CORES[item.categoria as Categoria]}`}>
                 {CATEGORIA_LABELS[item.categoria as Categoria]}
               </span>
-              {item.modulo_area && (
-                <Badge variant="outline" className="text-xs">
-                  {MODULOS[item.modulo_area] || item.modulo_area}
-                </Badge>
+              {getModuloBadge(item.modulo_area)}
+              {item.ativo ? (
+                <Badge className="bg-green-100 text-green-700">Ativo</Badge>
+              ) : (
+                <Badge className="bg-gray-100 text-gray-500">Inativo</Badge>
               )}
             </div>
             <h1 className="text-2xl font-bold text-[#0A3D78] mt-2">
@@ -234,12 +260,27 @@ export default function KnowledgeDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-[#0A3D78]">Conteúdo</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="text-[#5E6C84] hover:text-[#0F5FA8]"
+              >
+                {copied ? (
+                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4 mr-1" />
+                )}
+                {copied ? 'Copiado!' : 'Copiar'}
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="prose max-w-none">
-                <p className="text-[#1C1F26] whitespace-pre-wrap">{item.conteudo}</p>
+                <div className="text-[#1C1F26] whitespace-pre-wrap bg-[#F7F8FA] p-4 rounded-lg border border-[#D7DEE8] font-mono text-sm">
+                  {item.conteudo}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -287,7 +328,7 @@ export default function KnowledgeDetailPage() {
               <div className="flex items-center gap-2 text-sm">
                 <FileText className="w-4 h-4 text-[#5E6C84]" />
                 <span className="text-[#5E6C84]">Fonte:</span>
-                <span className="text-[#1C1F26] font-medium">{item.fonte}</span>
+                <span className="text-[#1C1F26] font-medium">{item.fonte || 'Vigorre'}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <BookOpen className="w-4 h-4 text-[#5E6C84]" />
@@ -327,10 +368,39 @@ export default function KnowledgeDetailPage() {
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-[#5E6C84]">
-                  Conteúdo geral, aplicável a todos os módulos
-                </p>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-[#5E6C84]">
+                    📚 Conteúdo geral, aplicável a todos os módulos
+                  </p>
+                </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[#0A3D78] text-sm">📊 Uso no CTI™</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-[#5E6C84]">Disponível para consulta</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-[#5E6C84]">Utilizado em análises automáticas</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-[#5E6C84]">Referência para recomendações</span>
+                </div>
+                <div className="mt-2 p-2 bg-[#EAF3FC] rounded-lg">
+                  <p className="text-xs text-[#5E6C84]">
+                    💡 O CTI™ consulta este conteúdo durante a análise do módulo relacionado
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
