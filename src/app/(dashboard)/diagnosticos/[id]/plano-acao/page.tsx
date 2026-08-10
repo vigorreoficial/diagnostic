@@ -18,10 +18,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Download,
-  FileText,
   TrendingUp,
-  Shield,
   Zap
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -144,8 +141,7 @@ export default function PlanoAcaoPage() {
           .single()
         setDiagnostico(diagData)
 
-        // Buscar ações do plano (se existir tabela)
-        // Por enquanto, vamos usar dados mockados
+        // Dados mockados
         const mockAcoes: Acao[] = [
           {
             id: '1',
@@ -206,7 +202,6 @@ export default function PlanoAcaoPage() {
     setGenerating(true)
 
     try {
-      // Simular geração de IA
       await new Promise(resolve => setTimeout(resolve, 3000))
 
       const novasAcoes: Acao[] = [
