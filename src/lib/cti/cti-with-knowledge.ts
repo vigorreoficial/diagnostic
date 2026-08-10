@@ -23,15 +23,11 @@ export interface CTIAnalysisResult {
 export class CTIWithKnowledge {
   private supabase = createClient()
 
-  /**
-   * Analisa um módulo com base nas respostas e consulta o Knowledge Hub™
-   */
   async analisarModulo(
     moduloId: string,
     respostas: any[],
     usuarioId: string
   ): Promise<CTIAnalysisResult> {
-    // 1. Buscar informações do módulo
     const { data: modulo } = await this.supabase
       .from('modulos_diagnostico')
       .select('*, projetos_diagnostico(empresa_id)')
@@ -42,18 +38,15 @@ export class CTIWithKnowledge {
       throw new Error('Módulo não encontrado')
     }
 
-    // 2. Buscar perguntas do módulo
     const { data: perguntas } = await this.supabase
       .from('perguntas')
       .select('*')
       .eq('modulo_area', modulo.area)
       .eq('ativo', true)
 
-    // 3. Buscar conhecimento relevante no Knowledge Hub™
     const tags = this.extrairTags(perguntas || [])
     const conhecimento = await knowledgeClient.buscarPorModulo(modulo.area, tags)
 
-    // 4. Buscar configuração da IA
     const { data: configData } = await this.supabase
       .from('configuracoes')
       .select('*')
@@ -62,13 +55,14 @@ export class CTIWithKnowledge {
 
     const config = configData?.valor || { provider: 'gemini', apiKey: '', model: 'gemini-pro' }
 
-    // 5. Gerar análise usando IA
     let analise: CTIAnalysisResult
 
     if (config.apiKey) {
       try {
         const prompt = this.construirPrompt(modulo, respostas, perguntas || [], conhecimento)
+        console.log('📝 PROMPT ENVIADO PARA IA:', prompt)
         const respostaIA = await chamarIA(prompt, config.provider, config.apiKey, config.model)
+        console.log('🤖 RESPOSTA DA IA:', respostaIA)
         analise = this.extrairAnaliseDaResposta(respostaIA, modulo, respostas, perguntas || [], conhecimento)
       } catch (error) {
         console.error('Erro ao chamar IA:', error)
@@ -78,15 +72,11 @@ export class CTIWithKnowledge {
       analise = await this.gerarAnaliseBaseadaEmRegras(modulo, respostas, perguntas || [], conhecimento)
     }
 
-    // 6. Salvar análise no banco
     await this.salvarAnalise(moduloId, analise, usuarioId)
 
     return analise
   }
 
-  /**
-   * Extrai tags das perguntas
-   */
   private extrairTags(perguntas: any[]): string[] {
     const tags: string[] = []
     for (const p of perguntas) {
@@ -108,9 +98,6 @@ export class CTIWithKnowledge {
     return tags
   }
 
-  /**
-   * Constrói o prompt para a IA
-   */
   private construirPrompt(
     modulo: any,
     respostas: any[],
@@ -118,90 +105,104 @@ export class CTIWithKnowledge {
     conhecimento: any[]
   ): string {
     // Mapear respostas para um formato legível
-    const respostasTexto = perguntas.map((p) => {
+    const respostasTexto = perguntas.map((p, index) => {
       const r = respostas.find(r => r.pergunta_id === p.id)
       const valor = r?.resposta
       let textoResposta = 'Não respondido'
       
       if (p.tipo === 'SIM_NAO') {
-        textoResposta = valor === true ? '✅ Sim' : '❌ Não'
+        textoResposta = valor === true ? '✅ SIM' : '❌ NÃO'
       } else if (p.tipo === 'ESCALA_1_5') {
-        textoResposta = `Nota ${valor || 0}/5`
+        textoResposta = `⭐ NOTA ${valor || 0}/5`
       } else if (p.tipo === 'TEXTO') {
-        textoResposta = valor || 'Não preenchido'
+        textoResposta = `"${valor || 'Não preenchido'}"`
       } else if (p.tipo === 'MULTIPLA_ESCOLHA') {
         textoResposta = valor || 'Não selecionado'
       }
       
-      return `- ${p.pergunta}: ${textoResposta}`
-    }).join('\n')
+      return `${index + 1}. ${p.pergunta}\n   Resposta: ${textoResposta}`
+    }).join('\n\n')
 
     // Extrair conhecimento relevante
     const conhecimentoTexto = conhecimento.map(k => 
-      `📖 ${k.titulo} (${k.fonte}, v${k.versao}): ${k.conteudo?.substring(0, 500)}...`
+      `• ${k.titulo} (${k.fonte}, v${k.versao})`
     ).join('\n')
 
     const areaLabel = this.getAreaLabel(modulo.area)
 
     return `
-Você é um especialista em ${areaLabel} e Gestão Organizacional.
+# INSTRUÇÕES - ANÁLISE DE DIAGNÓSTICO
 
-**OBJETIVO:** Analisar as respostas do questionário e gerar um parecer técnico detalhado.
+Você é um consultor especialista em ${areaLabel}.
 
-**MÓDULO:** ${modulo.area} - ${areaLabel}
+## MÓDULO ANALISADO: ${modulo.area}
 
-**RESPOSTAS DO QUESTIONÁRIO:**
+## RESPOSTAS DO QUESTIONÁRIO:
 ${respostasTexto}
 
-**CONHECIMENTO DE REFERÊNCIA (Knowledge Hub™):**
-${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
+## REFERÊNCIAS DO KNOWLEDGE HUB™:
+${conhecimentoTexto || 'Nenhuma referência específica'}
 
-**INSTRUÇÕES PARA A RESPOSTA:**
+## FORMATO OBRIGATÓRIO DE RESPOSTA:
+Responda EXATAMENTE no formato abaixo, sem adicionar textos extras:
 
-1. **Análise Geral:** Comece com uma visão geral do módulo, destacando os pontos fortes e fracos.
-
-2. **Por Resposta:** Analise cada resposta individualmente, explicando o que significa para a empresa.
-
-3. **Recomendações:** Liste ações práticas e priorizadas.
-
-4. **Formato:** Use a estrutura abaixo EXATAMENTE:
-
+---
 📊 ANÁLISE DO MÓDULO ${modulo.area}
 
 📌 VISÃO GERAL
-[Parágrafo com análise geral, destacando pontos fortes e fracos]
+[Escreva um parágrafo resumindo a situação da empresa neste módulo, destacando o que está bom e o que precisa melhorar]
 
 📋 PONTOS FORTES
-✅ [Item identificado como positivo]
-✅ [Item identificado como positivo]
+✅ [Item específico que está positivo]
+✅ [Item específico que está positivo]
 
 ⚠️ PONTOS DE ATENÇÃO
-❌ [Item que precisa de melhoria]
-❌ [Item que precisa de melhoria]
+❌ [Item específico que precisa melhorar]
+❌ [Item específico que precisa melhorar]
+❌ [Item específico que precisa melhorar]
 
-💡 RECOMENDAÇÕES (PRIORIZADAS)
-1. [Ação 1] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
-2. [Ação 2] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
-3. [Ação 3] - Impacto: [alto/médio/baixo] - Prazo: [curto/médio/longo]
+💡 RECOMENDAÇÕES
+1. [Ação concreta e específica] - Impacto: ALTO - Prazo: CURTO
+2. [Ação concreta e específica] - Impacto: ALTO - Prazo: MÉDIO
+3. [Ação concreta e específica] - Impacto: MÉDIO - Prazo: CURTO
 
 📊 CONFORMIDADE
-- Total de requisitos: [X]
-- Atendidos: [Y]
-- Percentual: [Z]%
+✅ Total de requisitos: [X]
+✅ Atendidos: [Y]
+📈 Percentual: [Z]%
 
-5. **Seja específico:** Relacione diretamente com as respostas dadas. Não use frases genéricas.
+## REGRAS IMPORTANTES:
+1. Use APENAS as respostas fornecidas para analisar
+2. Não invente informações que não estão nas respostas
+3. Seja específico, cite exemplos das respostas
+4. As recomendações devem ser PRÁTICAS e ACIONÁVEIS
+5. Use o formato EXATO acima, com os emojis e marcações
+6. NÃO adicione introdução, conclusão ou qualquer texto fora do formato
 
-6. **Não invente:** Se não tiver informação suficiente, diga "Não foi possível avaliar".
-
-7. **Seja prático:** As recomendações devem ser acionáveis.
-
-**SUA RESPOSTA DEVE SER APENAS O PARECER, SEM INTRODUÇÕES ADICIONAIS.**
+AGORA, ANALISE E RESPONDA EXATAMENTE NO FORMATO ACIMA:
 `
   }
 
-  /**
-   * Extrai análise da resposta da IA
-   */
+  private getAreaLabel(area: string): string {
+    const labels: Record<string, string> = {
+      'ESTRATEGIA': 'Estratégia e Governança',
+      'RH': 'Recursos Humanos',
+      'DP': 'Departamento Pessoal',
+      'JURIDICO': 'Jurídico e Compliance',
+      'SST': 'Saúde e Segurança do Trabalho',
+      'NUTRICAO': 'Nutrição Organizacional',
+      'FINANCEIRO': 'Financeiro',
+      'COMERCIAL': 'Comercial e Marketing',
+      'QUALIDADE': 'Qualidade',
+      'MELHORIA_CONTINUA': 'Melhoria Contínua',
+      'OPERACOES': 'Operações e Logística',
+      'COMPRAS': 'Compras e Suprimentos',
+      'TI': 'Tecnologia da Informação',
+      'AGRO': 'Agronegócio'
+    }
+    return labels[area] || area
+  }
+
   private extrairAnaliseDaResposta(
     respostaIA: string,
     modulo: any,
@@ -209,7 +210,7 @@ ${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
     perguntas: any[],
     conhecimento: any[]
   ): CTIAnalysisResult {
-    // Extrair informações da resposta
+    // Usar a resposta da IA diretamente como parecer
     const parecer = respostaIA || 'Análise não disponível'
     
     // Tentar extrair recomendações da resposta
@@ -235,7 +236,6 @@ ${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
 
     const percentual = total > 0 ? Math.round((conformes / total) * 100) : 0
 
-    // Determinar prioridade
     let prioridade: 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA' = 'MEDIA'
     if (percentual < 30) prioridade = 'CRITICA'
     else if (percentual < 50) prioridade = 'ALTA'
@@ -257,32 +257,6 @@ ${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
     }
   }
 
-  /**
-   * Retorna o label da área
-   */
-  private getAreaLabel(area: string): string {
-    const labels: Record<string, string> = {
-      'ESTRATEGIA': 'Estratégia e Governança',
-      'RH': 'Recursos Humanos',
-      'DP': 'Departamento Pessoal',
-      'JURIDICO': 'Jurídico e Compliance',
-      'SST': 'Saúde e Segurança do Trabalho',
-      'NUTRICAO': 'Nutrição Organizacional',
-      'FINANCEIRO': 'Financeiro',
-      'COMERCIAL': 'Comercial e Marketing',
-      'QUALIDADE': 'Qualidade',
-      'MELHORIA_CONTINUA': 'Melhoria Contínua',
-      'OPERACOES': 'Operações e Logística',
-      'COMPRAS': 'Compras e Suprimentos',
-      'TI': 'Tecnologia da Informação',
-      'AGRO': 'Agronegócio'
-    }
-    return labels[area] || area
-  }
-
-  /**
-   * Gera análise baseada em regras (fallback)
-   */
   private async gerarAnaliseBaseadaEmRegras(
     modulo: any,
     respostas: any[],
@@ -387,9 +361,6 @@ ${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
     }
   }
 
-  /**
-   * Retorna o nível de maturidade
-   */
   private obterNivelMaturidade(percentual: number): string {
     if (percentual >= 90) return '🏆 Excelência'
     if (percentual >= 75) return '✅ Estratégico'
@@ -399,9 +370,6 @@ ${conhecimentoTexto || 'Nenhuma referência específica encontrada.'}
     return '🔴 Inicial'
   }
 
-  /**
-   * Salva a análise no banco
-   */
   private async salvarAnalise(
     moduloId: string,
     analise: CTIAnalysisResult,
