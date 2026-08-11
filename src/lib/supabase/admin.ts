@@ -1,13 +1,13 @@
-// src/lib/supabase/server.ts
+// src/lib/supabase/admin.ts
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Cria um cliente Supabase para uso em API Routes, getServerSideProps,
- * ou qualquer código server-side no Pages Router.
+ * Cria um cliente Supabase com SERVICE_ROLE_KEY para operações administrativas.
+ * ⚠️ NUNCA use este cliente no frontend ou exponha a chave no navegador.
  */
-export function createClient() {
+export function createAdminClient() {
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
