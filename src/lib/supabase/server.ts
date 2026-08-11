@@ -1,27 +1,15 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+// src/lib/supabase/server.ts
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
+/**
+ * Cria um cliente Supabase para uso em API Routes, getServerSideProps,
+ * ou qualquer código server-side no Pages Router.
+ * 
+ * Para operações que exigem permissões elevadas, use src/lib/supabase/admin.ts
+ */
 export function createClient() {
-  const cookieStore = cookies()
-
-  return createServerClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Ignorar erro em Server Components
-          }
-        },
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
