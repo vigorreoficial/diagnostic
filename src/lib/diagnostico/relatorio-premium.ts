@@ -1,4 +1,7 @@
-import { createClient } from '@/lib/supabase/client'
+// src/lib/diagnostico/relatorio-premium.ts
+import { createClient } from '@/lib/supabase/server' // ✅ Import do server-side client
+// OU, se precisar de permissões admin:
+// import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface RelatorioPremium {
   // Cabeçalho
@@ -71,15 +74,20 @@ export interface RelatorioPremium {
 }
 
 export class GeradorRelatorioPremium {
-  private supabase = createClient()
+  // ❌ REMOVIDO: private supabase = createClient() 
+  // ✅ Cliente será criado sob demanda dentro dos métodos server-side
 
   /**
    * Gera um relatório premium completo
    */
   async gerarRelatorio(projetoId: string): Promise<RelatorioPremium> {
+    // ✅ Cria o cliente aqui (server-side)
+    const supabase = createClient()
+    // OU, para operações admin: const supabase = createAdminClient()
+
     try {
       // Buscar dados do projeto
-      const { data: projeto } = await this.supabase
+      const { data: projeto } = await supabase
         .from('projetos_diagnostico')
         .select(`
           *,
@@ -93,7 +101,7 @@ export class GeradorRelatorioPremium {
       }
 
       // Buscar respostas
-      const { data: respostas } = await this.supabase
+      const { data: respostas } = await supabase
         .from('respostas')
         .select(`
           *,
@@ -105,25 +113,25 @@ export class GeradorRelatorioPremium {
       const modulosAplicaveis = projeto.modulos_aplicaveis || []
 
       // Buscar análises CTI
-      const { data: analises } = await this.supabase
+      const { data: analises } = await supabase
         .from('analises_cti')
         .select('*')
         .eq('projeto_id', projetoId)
 
       // Buscar inconsistências
-      const { data: inconsistencias } = await this.supabase
+      const { data: inconsistencias } = await supabase
         .from('inconsistencias')
         .select('*')
         .eq('projeto_id', projetoId)
 
       // Buscar evidências
-      const { data: evidencias } = await this.supabase
+      const { data: evidencias } = await supabase
         .from('evidencias')
         .select('*')
         .eq('projeto_id', projetoId)
 
       // Buscar instrumentos coletivos
-      const { data: instrumentos } = await this.supabase
+      const { data: instrumentos } = await supabase
         .from('instrumentos_coletivos')
         .select('*')
         .eq('projeto_id', projetoId)
@@ -182,6 +190,10 @@ export class GeradorRelatorioPremium {
       throw error
     }
   }
+
+  // ... (mantenha todos os métodos privados: gerarResumo, obterNivelTexto, etc.)
+  // Eles permanecem inalterados. Apenas certifique-se de que não há referência 
+  // a `this.supabase` fora dos métodos que criam o cliente.
 
   private gerarResumo(projeto: any, analises: any[]): string {
     const imv = projeto.imv || 0
