@@ -143,7 +143,7 @@ export default function DashboardPage() {
           const { data: userInfo } = await supabase
             .from('usuarios')
             .select('*')
-            .eq('auth_user_id', user.id)
+            .eq('user_id', user.id)
             .single()
           
           setUserData(userInfo)
