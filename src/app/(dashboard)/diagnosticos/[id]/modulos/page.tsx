@@ -49,7 +49,7 @@ export default function ListaModulosPage() {
           const { data } = await supabase
             .from('usuarios')
             .select('*')
-            .eq('auth_user_id', user.id)
+            .eq('user_id', user.id)
             .single()
           setUserData(data)
         }
