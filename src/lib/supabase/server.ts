@@ -1,6 +1,11 @@
+// src/lib/supabase/server.ts
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+/**
+ * Cria um cliente Supabase para uso em Server Components, 
+ * API Routes e Server Actions (Next.js App Router)
+ */
 export function createClient() {
   const cookieStore = cookies()
 
@@ -18,7 +23,8 @@ export function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Ignorar erro em Server Components
+            // Em Server Components, setAll pode falhar silenciosamente.
+            // Isso é esperado e seguro — cookies são gerenciados via headers.
           }
         },
       },
