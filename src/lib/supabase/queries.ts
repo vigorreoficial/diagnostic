@@ -1,9 +1,13 @@
 // src/lib/supabase/queries.ts
 import { createClient } from '@/lib/supabase/server'
 
+// =============================================================
+// 🧑‍ USUÁRIOS
+// =============================================================
+
 /**
- * Busca usuário pelo auth_user_id (UUID do Supabase Auth)
- * ✅ Usa o nome REAL da coluna na sua tabela: 'auth_user_id'
+ * Busca um usuário pelo ID de autenticação (UUID)
+ * ✅ CORREÇÃO: Usa 'user_id' conforme confirmado no banco
  */
 export async function getUsuarioByAuthId(authUserId: string) {
   const supabase = createClient()
@@ -20,7 +24,7 @@ export async function getUsuarioByAuthId(authUserId: string) {
         segmento
       )
     `)
-    .eq('auth_user_id', authUserId) // ✅ COLUNA CORRETA
+    .eq('user_id', authUserId) // ✅ Nome correto da coluna
     .single()
 
   if (error) {
@@ -32,10 +36,11 @@ export async function getUsuarioByAuthId(authUserId: string) {
 }
 
 /**
- * Cria ou atualiza usuário após login/signup
+ * Cria ou atualiza um usuário no banco (Upsert)
+ * ✅ Útil após login/signup
  */
 export async function upsertUsuario(userData: {
-  auth_user_id: string
+  user_id: string // ✅ Nome correto
   nome: string
   email: string
   empresa_id?: string
@@ -49,7 +54,7 @@ export async function upsertUsuario(userData: {
   const { data, error } = await supabase
     .from('usuarios')
     .upsert({
-      auth_user_id: userData.auth_user_id,
+      user_id: userData.user_id, // ✅ Nome correto
       nome: userData.nome,
       email: userData.email,
       empresa_id: userData.empresa_id,
@@ -59,7 +64,7 @@ export async function upsertUsuario(userData: {
       certificacoes: userData.certificacoes,
       updated_at: new Date().toISOString()
     }, {
-      onConflict: 'auth_user_id' // ✅ COLUNA CORRETA
+      onConflict: 'user_id' // ✅ Conflito baseado na coluna correta
     })
     .select()
     .single()
@@ -72,8 +77,13 @@ export async function upsertUsuario(userData: {
   return data
 }
 
+// =============================================================
+// 📊 RELATÓRIOS E PROJETOS
+// =============================================================
+
 /**
- * Busca relatórios com relacionamento correto
+ * Busca lista de relatórios com dados dos projetos e empresas
+ * ✅ CORREÇÃO: Join correto para evitar erro 400
  */
 export async function getRelatoriosComProjetos(limit: number = 10) {
   const supabase = createClient()
@@ -85,6 +95,7 @@ export async function getRelatoriosComProjetos(limit: number = 10) {
       projetos_diagnostico:projeto_id (
         id,
         titulo,
+        status,
         empresas:empresa_id (
           id,
           nome
@@ -103,7 +114,40 @@ export async function getRelatoriosComProjetos(limit: number = 10) {
 }
 
 /**
- * Busca respostas de um projeto específico
+ * Busca um projeto específico pelo ID com dados completos
+ */
+export async function getProjetoById(projetoId: string) {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('projetos_diagnostico')
+    .select(`
+      *,
+      empresas (
+        id,
+        nome,
+        cnpj
+      ),
+      usuarios (
+        id,
+        nome,
+        email
+      )
+    `)
+    .eq('id', projetoId)
+    .single()
+
+  if (error) {
+    console.error('Erro ao buscar projeto:', error)
+    return null
+  }
+
+  return data
+}
+
+/**
+ * Busca todas as respostas de um projeto
+ * ✅ Inclui dados da pergunta relacionada
  */
 export async function getRespostasByProjeto(projetoId: string) {
   const supabase = createClient()
@@ -124,41 +168,6 @@ export async function getRespostasByProjeto(projetoId: string) {
   if (error) {
     console.error('Erro ao buscar respostas:', error)
     return []
-  }
-
-  return data
-}
-
-/**
- * Busca projeto por ID com dados relacionados
- */
-export async function getProjetoById(projetoId: string) {
-  const supabase = createClient()
-
-  const { data, error } = await supabase
-    .from('projetos_diagnostico')
-    .select(`
-      *,
-      empresas (
-        id,
-        nome,
-        cnpj,
-        porte,
-        segmento
-      ),
-      usuarios (
-        id,
-        nome,
-        email,
-        auth_user_id
-      )
-    `)
-    .eq('id', projetoId)
-    .single()
-
-  if (error) {
-    console.error('Erro ao buscar projeto:', error)
-    return null
   }
 
   return data
