@@ -1,3 +1,4 @@
+// src/app/(dashboard)/resultados/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -23,23 +24,27 @@ export default function ResultadosPage() {
       setLoading(true)
 
       try {
+        // 1. Buscar usuário logado
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
+          // ✅ CORREÇÃO: usar 'user_id' (nome real da coluna)
           const { data } = await supabase
             .from('usuarios')
             .select('*')
-            .eq('auth_user_id', user.id)
+            .eq('user_id', user.id) // ✅ Nome correto: user_id (não auth_user_id)
             .single()
           setUserData(data)
         }
 
-        // Buscar projetos concluídos
+        // 2. Buscar projetos concluídos do usuário
+        // ✅ Filtra por responsavel_id (nome real da coluna em projetos_diagnostico)
         const { data: projetosData } = await supabase
           .from('projetos_diagnostico')
           .select(`
             *,
             empresas (nome)
           `)
+          .eq('responsavel_id', userData?.id) // ✅ Filtra pelos projetos do usuário
           .eq('status', 'ENTREGA')
           .order('created_at', { ascending: false })
 
@@ -50,14 +55,18 @@ export default function ResultadosPage() {
           await carregarResultados(projetosData[0].id)
         }
       } catch (error) {
+        console.error('Erro ao carregar dados:', error)
         toast.error('Erro ao carregar dados')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchData()
-  }, [supabase])
+    // Só executa se userData estiver disponível (após login)
+    if (userData || !loading) {
+      fetchData()
+    }
+  }, [supabase, userData, loading])
 
   const carregarResultados = async (projetoId: string) => {
     setLoading(true)
@@ -65,6 +74,7 @@ export default function ResultadosPage() {
       const relatorio = await geradorRelatorioPremium.gerarRelatorio(projetoId)
       setResultados(relatorio)
     } catch (error) {
+      console.error('Erro ao gerar relatório:', error)
       toast.error('Erro ao carregar resultados')
     } finally {
       setLoading(false)
