@@ -88,7 +88,7 @@ export default function NovoColaboradorPage() {
       const { data, error } = await supabase
         .from('usuarios')
         .insert({
-          auth_user_id: authData.user.id,
+          user_id: authData.user.id,
           nome: formData.nome,
           email: formData.email,
           perfil: formData.perfil,
