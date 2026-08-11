@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/client'
+
 export interface RelatorioPremium {
   // Cabeçalho
   titulo: string
@@ -218,7 +220,6 @@ export class GeradorRelatorioPremium {
   private identificarPontosFortes(respostas: any[], analises: any[]): string[] {
     const fortes: string[] = []
     
-    // Respostas positivas
     for (const r of respostas) {
       if (r.resposta === true || r.resposta === 'SIM' || (typeof r.resposta === 'number' && r.resposta >= 4)) {
         const pergunta = r.perguntas?.pergunta || ''
@@ -234,7 +235,6 @@ export class GeradorRelatorioPremium {
   private identificarLacunas(respostas: any[], analises: any[]): string[] {
     const lacunas: string[] = []
     
-    // Respostas negativas
     for (const r of respostas) {
       if (r.resposta === false || r.resposta === 'NAO' || (typeof r.resposta === 'number' && r.resposta < 3)) {
         const pergunta = r.perguntas?.pergunta || ''
@@ -302,7 +302,6 @@ export class GeradorRelatorioPremium {
   }
 
   private extrairPontosFortes(parecer: string): string[] {
-    // Extrair pontos fortes do parecer (simplificado)
     const fortes: string[] = []
     const linhas = parecer.split('\n')
     for (const linha of linhas) {
