@@ -1,3 +1,4 @@
+// src/app/(dashboard)/perfil/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -15,10 +16,11 @@ export default function PerfilPage() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        // ✅ CORREÇÃO: usar 'user_id' (nome real da coluna)
         const { data } = await supabase
           .from('usuarios')
           .select('*')
-          .eq('auth_user_id', user.id)
+          .eq('user_id', user.id) // ✅ Correto: user_id (não auth_user_id)
           .single()
         setUserData(data)
       }
