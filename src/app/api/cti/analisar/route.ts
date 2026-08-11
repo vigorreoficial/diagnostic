@@ -1,3 +1,4 @@
+// src/app/api/cti/analyze/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ctiWithKnowledge } from '@/lib/cti/cti-with-knowledge'
@@ -23,11 +24,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar usuário na tabela public
+    // ✅ CORREÇÃO: usar 'user_id' (nome real da coluna)
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('id')
-      .eq('auth_user_id', user.id)
+      .eq('user_id', user.id) // ✅ Nome correto: user_id (não auth_user_id)
       .single()
 
     if (!usuario) {
