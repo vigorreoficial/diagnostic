@@ -1,9 +1,12 @@
-import { createServerClient } from '@supabase/ssr'
+// src/middleware.ts
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
   })
 
   const supabase = createServerClient(
@@ -14,40 +17,43 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
-          })
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => {
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           })
         },
       },
     }
   )
 
+  // Atualiza a sessão do usuário
   const { data: { session } } = await supabase.auth.getSession()
 
-  const publicRoutes = ['/login']
-  const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname.startsWith(route)
+  // Rotas protegidas: redireciona se não estiver autenticado
+  const protectedPaths = ['/dashboard', '/resultados', '/perfil', '/configuracoes']
+  const isProtectedPath = protectedPaths.some(path => 
+    request.nextUrl.pathname.startsWith(path)
   )
 
-  if (!session && !isPublicRoute) {
-    const url = new URL('/login', request.url)
+  if (isProtectedPath && !session) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('redirectedFrom', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
-  if (session && isPublicRoute) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // Se estiver autenticado e tentar acessar login, redireciona para dashboard
+  if (request.nextUrl.pathname === '/login' && session) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  return response
 }
 
+// Configura em quais rotas o middleware deve rodar
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
