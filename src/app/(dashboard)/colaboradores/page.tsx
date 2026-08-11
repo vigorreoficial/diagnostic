@@ -1,3 +1,4 @@
+// src/app/(dashboard)/colaboradores/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -40,10 +41,11 @@ export default function ColaboradoresPage() {
         // Buscar usuário logado
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
+          // ✅ CORREÇÃO: usar 'user_id' (nome real da coluna)
           const { data: userInfo } = await supabase
             .from('usuarios')
             .select('*')
-            .eq('auth_user_id', user.id)
+            .eq('user_id', user.id) // ✅ Correto: user_id (não auth_user_id)
             .single()
           setUserData(userInfo)
           setIsAdmin(userInfo?.perfil === 'ADMIN')
