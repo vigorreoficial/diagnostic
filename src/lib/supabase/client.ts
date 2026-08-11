@@ -1,14 +1,29 @@
 // src/lib/supabase/client.ts
 import { createBrowserClient } from '@supabase/ssr'
 
+// ✅ Tipo para as opções de cookie (compatível com @supabase/ssr)
+type CookieOptions = {
+  domain?: string
+  path?: string
+  secure?: boolean
+  sameSite?: 'lax' | 'strict' | 'none'
+  maxAge?: number
+  httpOnly?: boolean
+}
+
+type Cookie = {
+  name: string
+  value: string
+  options?: CookieOptions
+}
+
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // ✅ Garante que cookies de auth sejam lidos/escritos corretamente
       cookies: {
-        getAll() {
+        getAll(): Cookie[] {
           // No browser, document.cookie é uma string; precisamos parsear
           if (typeof document === 'undefined') return []
           return document.cookie.split(';').map((cookie) => {
@@ -16,7 +31,8 @@ export function createClient() {
             return { name, value }
           })
         },
-        setAll(cookiesToSet) {
+        // ✅ CORREÇÃO: Tipagem explícita para cookiesToSet
+        setAll(cookiesToSet: Cookie[]): void {
           if (typeof document === 'undefined') return
           cookiesToSet.forEach(({ name, value, options }) => {
             // Cria string de cookie com opções básicas
@@ -26,6 +42,7 @@ export function createClient() {
             if (options?.secure) cookie += '; Secure'
             if (options?.sameSite) cookie += `; SameSite=${options.sameSite}`
             if (options?.maxAge) cookie += `; Max-Age=${options.maxAge}`
+            if (options?.httpOnly) cookie += '; HttpOnly'
             document.cookie = cookie
           })
         },
