@@ -1,0 +1,38 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Executa a cada 6 horas
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Permite executar manualmente
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping Supabase endpoint
+        run: |
+          echo "🚀 Pingando Supabase..."
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.VERCEL_URL }}/api/ping)
+          
+          if [ $RESPONSE -eq 200 ]; then
+            echo "✅ Supabase pingado com sucesso! (Status: $RESPONSE)"
+          else
+            echo "❌ Erro ao pingar Supabase (Status: $RESPONSE)"
+            exit 1
+          fi
+      
+      - name: Verificar status detalhado
+        if: success()
+        run: |
+          echo "📊 Detalhes do ping:"
+          curl -s https://${{ secrets.VERCEL_URL }}/api/ping | jq '.'
+      
+      - name: Notificar falha
+        if: failure()
+        run: |
+          echo "⚠️ Falha ao manter Supabase ativo!"
+          echo "Verifique se o projeto está rodando em:"
+          echo "https://${{ secrets.VERCEL_URL }}"
